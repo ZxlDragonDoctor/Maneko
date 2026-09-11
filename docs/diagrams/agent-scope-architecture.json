@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AI 小说漫画生成器",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "agent-scope-architecture.html",
+    "views": [
+      {
+        "id": "dev-request-path",
+        "label": "本地开发主链路",
+        "focus": ["browser", "vite", "fastapi", "sqlite"],
+        "note": "浏览器 → Vite 5173 → FastAPI 8001 → SQLite"
+      },
+      {
+        "id": "ai-pipeline",
+        "label": "AI 出图流水线",
+        "focus": ["fastapi", "agents", "provider", "mimo", "wanx", "comics"],
+        "note": "分章/分镜 Agent 经 IMAGE_PROVIDER 落盘 comics/"
+      },
+      {
+        "id": "deploy-path",
+        "label": "Docker 部署",
+        "focus": ["browser", "nginx", "fastapi", "sqlite", "comics"],
+        "note": "Nginx :80 代理 /api /comics /uploads → backend :8000"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "浏览器",
+      "sublabel": "阅读 + 漫画预览",
+      "pos": [40, 280],
+      "size": [130, 64]
+    },
+    {
+      "id": "vite",
+      "type": "frontend",
+      "label": "Vite 前端",
+      "sublabel": "React :5173",
+      "pos": [230, 280],
+      "size": [140, 64],
+      "tag": "oxlint"
+    },
+    {
+      "id": "nginx",
+      "type": "cloud",
+      "label": "Nginx",
+      "sublabel": "Docker :80",
+      "pos": [230, 80],
+      "size": [140, 64],
+      "tag": "生产入口"
+    },
+    {
+      "id": "fastapi",
+      "type": "backend",
+      "label": "FastAPI",
+      "sublabel": "app.main :8001",
+      "pos": [430, 280],
+      "size": [150, 64],
+      "tag": "Docker :8000"
+    },
+    {
+      "id": "agents",
+      "type": "backend",
+      "label": "AgentScope",
+      "sublabel": "分章 / 分镜 / 出图",
+      "pos": [640, 280],
+      "size": [150, 64]
+    },
+    {
+      "id": "provider",
+      "type": "backend",
+      "label": "IMAGE_PROVIDER",
+      "sublabel": "mock | mimo | wanx",
+      "pos": [850, 280],
+      "size": [160, 64]
+    },
+    {
+      "id": "qwen",
+      "type": "external",
+      "label": "DashScope 文本",
+      "sublabel": "qwen3.8-max",
+      "pos": [640, 100],
+      "size": [150, 64],
+      "tag": "DASHSCOPE_API_KEY"
+    },
+    {
+      "id": "mimo",
+      "type": "external",
+      "label": "MiMo 图片 API",
+      "sublabel": "OpenAI 兼容",
+      "pos": [850, 100],
+      "size": [160, 64],
+      "tag": "MIMO_IMAGE_BASE_URL"
+    },
+    {
+      "id": "wanx",
+      "type": "external",
+      "label": "通义万相",
+      "sublabel": "wanx-v1",
+      "pos": [850, 460],
+      "size": [160, 64],
+      "tag": "IMAGE_PROVIDER=wanx"
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "novels.db",
+      "pos": [430, 460],
+      "size": [150, 64],
+      "tag": "create_all"
+    },
+    {
+      "id": "comics",
+      "type": "database",
+      "label": "本地文件",
+      "sublabel": "comics/ + uploads/",
+      "pos": [640, 460],
+      "size": [150, 64],
+      "tag": "/comics 静态挂载"
+    },
+    {
+      "id": "scripts",
+      "type": "backend",
+      "label": "联调脚本",
+      "sublabel": "MiMo mock + demo",
+      "pos": [40, 460],
+      "size": [150, 64],
+      "tag": "scripts/"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "本地开发：backend/ 必须作为 CWD 启动",
+      "wraps": ["vite", "fastapi", "agents", "provider", "sqlite", "comics", "scripts"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-vite",
+      "from": "browser",
+      "to": "vite",
+      "label": "HTTP :5173",
+      "variant": "emphasis"
+    },
+    {
+      "id": "vite-proxy",
+      "from": "vite",
+      "to": "fastapi",
+      "label": "proxy /api /comics",
+      "variant": "emphasis",
+      "labelDy": -19
+    },
+    {
+      "id": "nginx-api",
+      "from": "nginx",
+      "to": "fastapi",
+      "label": "proxy :8000",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "fastapi-agents",
+      "from": "fastapi",
+      "to": "agents",
+      "label": "同步解析 + BackgroundTasks 出图",
+      "labelDy": 56
+    },
+    {
+      "id": "agents-provider",
+      "from": "agents",
+      "to": "provider",
+      "label": "generate_image",
+      "labelDy": -19
+    },
+    {
+      "id": "agents-qwen",
+      "from": "agents",
+      "to": "qwen",
+      "label": "分章 / 分镜 JSON",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "provider-mimo",
+      "from": "provider",
+      "to": "mimo",
+      "label": "POST /images/generations",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "provider-wanx",
+      "from": "provider",
+      "to": "wanx",
+      "label": "ImageSynthesis.call",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "fastapi-sqlite",
+      "from": "fastapi",
+      "to": "sqlite",
+      "label": "SQLAlchemy",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "provider-comics",
+      "from": "provider",
+      "to": "comics",
+      "label": "panel_XX.png",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "scripts-fastapi",
+      "from": "scripts",
+      "to": "fastapi",
+      "label": "本地联调",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "开发入口",
+      "items": [
+        "backend 在 backend/ 目录启动 uvicorn :8001",
+        "frontend Vite :5173，代理 /api 与 /comics",
+        "start-dev.ps1 一键拉起双端"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "AI 流水线",
+      "items": [
+        "上传同步走 NovelParserAgent 分章",
+        "漫画生成用 BackgroundTasks：ComicScript → ComicGenerator",
+        "IMAGE_PROVIDER 可切 mock / mimo / wanx"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "存储与部署",
+      "items": [
+        "SQLite novels.db + comics/ 静态文件",
+        "Docker：Nginx :80 → backend :8000",
+        "DASHSCOPE_API_KEY / MIMO_IMAGE_* 见 backend/.env"
+      ]
+    }
+  ]
+}

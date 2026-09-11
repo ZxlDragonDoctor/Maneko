@@ -1,0 +1,46 @@
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+*.pem
+*.key
+
+# Database
+*.db
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE / local tooling
+.vscode/
+.idea/
+.vite/
+.superpowers/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Uploads and generated comics
+uploads/
+comics/
+backend/uploads/
+backend/comics/
+backend/data/pg_catalog.json
+
+# OS
+.DS_Store
+Thumbs.db

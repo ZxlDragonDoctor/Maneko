@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ノベル漫画 · AI 小说漫画生成器</title>
+  <link rel="stylesheet" href="styles/neon-tokyo.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="nav">
+      <div class="nav-inner">
+        <a href="#" class="logo" id="logo-home">
+          <span>ノベル漫画</span>
+          <span class="kana">ネオン東京</span>
+        </a>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="#" class="active" data-view="home">書庫</a>
+          <a href="#" data-view="reader">読む</a>
+          <a href="#" data-view="comics">漫画集</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- HOME -->
+      <section id="view-home" class="view">
+        <div class="hero">
+          <h1>把小说变成<br /><span class="cyan">分镜漫画</span></h1>
+          <p>
+            上传纯文本 · AI 分章 → 分镜 → 出图。支持修仙 / 科幻 / 悬疑等风格，边读边看漫画。
+          </p>
+          <div class="hero-actions">
+            <button type="button" class="btn btn-primary" id="btn-upload">上传小说</button>
+            <button type="button" class="btn btn-cyan" id="btn-open-demo">打开示例《老槐树下的夏天》</button>
+          </div>
+        </div>
+
+        <h2 class="section-title">我的<span class="accent">書庫</span></h2>
+        <p class="section-sub">LIBRARY · 选择一部作品进入阅读 / 漫画预览</p>
+        <div class="grid grid-3" id="novel-list" aria-live="polite"></div>
+      </section>
+
+      <!-- READER -->
+      <section id="view-reader" class="view" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <div>
+            <button type="button" class="btn btn-ghost" data-view="home" style="padding:0.4rem 0.8rem;font-size:0.65rem;">← 返回書庫</button>
+            <h2 class="section-title" style="margin-top:0.75rem;" id="reader-title">—</h2>
+            <p class="section-sub" id="reader-sub" style="margin-bottom:0;">章节与分镜同步预览</p>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="split" role="tab" aria-selected="true">分屏</button>
+          <button type="button" class="tab" data-tab="novel" role="tab" aria-selected="false">仅小说</button>
+          <button type="button" class="tab" data-tab="comic" role="tab" aria-selected="false">仅漫画</button>
+        </div>
+
+        <div class="split" id="split-layout">
+          <div class="panel" id="panel-novel">
+            <div class="panel-head">
+              <span>小説 · 原文</span>
+              <span id="chapter-count" style="font-size:0.7rem;color:var(--muted);"></span>
+            </div>
+            <div class="panel-body" id="chapter-list"></div>
+          </div>
+          <div class="panel" id="panel-comic">
+            <div class="panel-head">
+              <span>漫画 · 分鏡</span>
+              <span id="comic-status" style="font-size:0.7rem;color:var(--muted);">—</span>
+            </div>
+            <div class="panel-body">
+              <div class="comic-grid" id="comic-grid"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMICS -->
+      <section id="view-comics" class="view" hidden>
+        <button type="button" class="btn btn-ghost" data-view="home" style="padding:0.4rem 0.8rem;font-size:0.65rem;margin-bottom:1rem;">← 返回書庫</button>
+        <h2 class="section-title">漫画<span class="accent">集</span></h2>
+        <p class="section-sub" id="comics-sub">COLLECTION · 已完成分镜</p>
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));" id="comics-grid"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span class="kana">ネオン東京</span> · AI 小说漫画生成器 · IMAGE_PROVIDER mock / mimo / wanx
+    </footer>
+  </div>
+
+  <!-- Upload modal -->
+  <div class="modal-backdrop" id="upload-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+      <h2 id="upload-title">上传小说</h2>
+      <span class="kana">アップロード · .txt / .md</span>
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept=".txt,.md,.markdown" hidden />
+        <div id="drop-label">点击选择 .txt / .md · 最大 10MB</div>
+      </label>
+      <p id="upload-error" style="color:var(--pink);font-size:0.8rem;min-height:1.2rem;margin:0.75rem 0 0;"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-cancel-upload">取消</button>
+        <button type="button" class="btn btn-primary" id="btn-do-upload" disabled>上传</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

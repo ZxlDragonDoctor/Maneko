@@ -1,0 +1,28 @@
+# Render.com free web service (FastAPI)
+# 把本文件放在仓库根，或在 Render Dashboard 手动创建 Web Service
+services:
+  - type: web
+    name: maneko-api
+    runtime: docker
+    plan: free
+    rootDir: .
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DASHSCOPE_API_KEY
+        sync: false
+      - key: IMAGE_PROVIDER
+        value: qwen
+      - key: QWEN_IMAGE_MODEL
+        value: qwen-image
+      - key: QWEN_IMAGE_MODE
+        value: sdk
+      - key: DATABASE_URL
+        value: sqlite:////tmp/novels.db
+      - key: CORS_ORIGINS
+        value: '["http://localhost:5173","https://maneko.vercel.app","https://maneko-app.vercel.app"]'
+    disk:
+      name: maneko-data
+      mountPath: /tmp
+      sizeGB: 1

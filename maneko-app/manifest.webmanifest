@@ -1,0 +1,19 @@
+{
+  "name": "Maneko · 漫猫",
+  "short_name": "Maneko",
+  "description": "AI 小说 → 日漫分镜漫画",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "orientation": "portrait",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

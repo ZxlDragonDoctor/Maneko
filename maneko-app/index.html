@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Maneko · 漫猫 — AI 小说生成日漫分镜" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/mascot-neko.png" />
+  <link rel="stylesheet" href="css/app.css" />
+  <title>Maneko · 漫猫</title>
+</head>
+<body>
+  <div id="app">
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <div class="right"><span>5G</span><div class="battery"><i></i></div></div>
+    </div>
+
+    <header class="appbar">
+      <img class="neko-ava" src="assets/mascot-neko.png" alt="ねこ" width="36" height="36" />
+      <div class="brand">
+        <div class="name">Maneko</div>
+        <span class="kana">漫猫 · ノベル漫画 · ねこ</span>
+      </div>
+      <button class="icon-btn" id="btnHeaderSettings" aria-label="设置" type="button">⚙</button>
+    </header>
+
+    <main id="view" class="screen"></main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="nav-item active" data-tab="home" type="button"><span class="ico">📚</span>首页</button>
+      <button class="nav-item" data-tab="library" type="button"><span class="ico">🗂</span>書庫</button>
+      <button class="nav-item" data-tab="studio" type="button"><span class="ico">✨</span>生成</button>
+      <button class="nav-item" data-tab="comics" type="button"><span class="ico">🎞</span>漫画</button>
+      <button class="nav-item" data-tab="me" type="button"><span class="ico">🐱</span>ねこ</button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="sheet-mask" id="sheetMask">
+    <div class="sheet" id="sheetBody"></div>
+  </div>
+
+  <script>
+    document.getElementById('btnHeaderSettings').addEventListener('click', function () {
+      document.querySelectorAll('.nav-item').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.tab === 'me');
+      });
+      // let app router handle via synthetic click on nav
+      var me = document.querySelector('.nav-item[data-tab="me"]');
+      if (me) me.click();
+    });
+  </script>
+  <script src="js/core.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "maneko-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Maneko · 漫猫 — Android APK (Capacitor)",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "android": "cap run android",
+    "apk:debug": "cd android && gradlew assembleDebug",
+    "apk:release": "cd android && gradlew assembleRelease",
+    "build:www": "powershell -ExecutionPolicy Bypass -File ../scripts/build-apk-www.ps1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/status-bar": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

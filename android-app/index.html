@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./mascot-neko.png" />
+  <title>Maneko · ノベル漫画</title>
+  <!-- Neon Tokyo tokens aligned with frontend/public/styles/neon-tokyo.css -->
+  <style>
+    :root {
+      --night: #0a0a1a;
+      --night-2: #12041e;
+      --pink: #ff1493;
+      --cyan: #00f0ff;
+      --orange: #ff6b00;
+      --purple: #bc13fe;
+      --ink: #ffffff;
+      --muted: #9ca3af;
+      --glow-pink: 0 0 10px rgba(255, 20, 147, 0.6), 0 0 25px rgba(255, 20, 147, 0.35);
+      --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.55), 0 0 22px rgba(0, 240, 255, 0.3);
+      --glow-orange: 0 0 10px rgba(255, 107, 0, 0.55);
+      --glow-card: 0 0 15px rgba(255, 20, 147, 0.3);
+      --glow-card-hover: 0 0 30px rgba(255, 20, 147, 0.5), 0 0 18px rgba(0, 240, 255, 0.25);
+      --radius: 2px;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --nav-h: 62px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+      background-attachment: fixed;
+      line-height: 1.6;
+      overscroll-behavior: none;
+    }
+    /* wet asphalt grain — same as desktop neon-tokyo.css */
+    body::before {
+      content: "";
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      opacity: 0.07;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,20,147,.4), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(0,240,255,.35), transparent 42%),
+        radial-gradient(circle at 50% 100%, rgba(255,107,0,.25), transparent 45%);
+      z-index: 0;
+    }
+    #app {
+      position: relative; z-index: 1;
+      max-width: 430px; margin: 0 auto; min-height: 100vh;
+      padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+    }
+
+    /* —— Status bar (device chrome) —— */
+    .statusbar {
+      height: calc(26px + var(--safe-top));
+      padding: var(--safe-top) 14px 0;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--muted); letter-spacing: .06em;
+      text-transform: uppercase; font-weight: 700;
+    }
+    .statusbar .right { display: flex; gap: 8px; align-items: center; }
+    .battery {
+      width: 18px; height: 10px; border: 1.5px solid var(--muted);
+      border-radius: 1px; position: relative;
+    }
+    .battery::after {
+      content: ''; position: absolute; right: -3px; top: 2px;
+      width: 2px; height: 4px; background: var(--muted);
+    }
+    .battery i { display: block; height: 100%; width: 70%; background: var(--cyan); }
+
+    /* —— App bar —— aligned with Header.jsx —— */
+    .appbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px 12px;
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(10, 10, 26, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 2px solid rgba(255, 20, 147, 0.3);
+      box-shadow: var(--glow-card);
+    }
+    .neko-ava {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid rgba(255, 20, 147, 0.6);
+      box-shadow: 0 0 12px rgba(255, 20, 147, 0.45);
+      object-fit: cover; background: var(--night-2);
+      flex: 0 0 auto;
+    }
+    .brand { flex: 1; min-width: 0; line-height: 1.15; }
+    .brand .name {
+      font-weight: 800; font-size: 1.15rem; letter-spacing: 0.04em;
+      color: var(--pink); text-shadow: var(--glow-pink);
+    }
+    .brand .kana {
+      display: block; font-size: 10px; font-weight: 600;
+      color: var(--cyan); text-shadow: var(--glow-cyan);
+      letter-spacing: 0.08em;
+    }
+    .icon-btn {
+      width: 40px; height: 36px; border-radius: var(--radius);
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      background: transparent; color: var(--cyan);
+      font-size: 16px; cursor: pointer; transition: all .3s;
+    }
+    .icon-btn:active {
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.4);
+      border-color: var(--cyan); transform: scale(0.96);
+    }
+
+    .screen { padding: 12px 14px 20px; animation: fade .22s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+
+    .section-title {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 6px 0 12px;
+    }
+    .section-title h2 {
+      margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: .02em;
+    }
+    .section-title h2 .accent {
+      color: var(--pink); text-shadow: var(--glow-pink);
+    }
+    .section-title span { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+
+    /* —— Cards —— */
+    .card {
+      background: rgba(10, 10, 26, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 20, 147, 0.3);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: box-shadow .35s, border-color .35s;
+      position: relative;
+    }
+    .card:active {
+      border-color: var(--pink);
+      box-shadow: var(--glow-card-hover);
+    }
+    .card.cyan-border { border-color: rgba(0, 240, 255, 0.35); }
+    .card.orange-border { border-color: rgba(255, 107, 0, 0.35); }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .cover {
+      width: 52px; height: 68px; border-radius: var(--radius); flex: 0 0 auto;
+      border: 1px solid rgba(255, 20, 147, 0.4);
+      background: linear-gradient(145deg, #ff1493, #6b0f4a 55%, #12041e);
+      box-shadow: 0 0 14px rgba(255, 20, 147, 0.28);
+      display: grid; place-items: center; font-size: 20px;
+    }
+    .meta { flex: 1; min-width: 0; }
+    .meta h3 {
+      margin: 0 0 4px; font-size: 15px; font-weight: 800;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .meta p {
+      margin: 0; font-size: 12px; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 800;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: var(--radius);
+      border: 1px solid rgba(255,20,147,.5); color: var(--pink);
+      background: rgba(255,20,147,.08);
+    }
+    .badge.cyan { border-color: rgba(0,240,255,.5); color: var(--cyan); background: rgba(0,240,255,.08); }
+    .badge.orange { border-color: rgba(255,107,0,.5); color: var(--orange); background: rgba(255,107,0,.08); }
+
+    /* —— Buttons —— same vocabulary as desktop —— */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 12px 16px; font-weight: 800; font-size: 12px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      border-radius: var(--radius); transition: all .3s;
+      border: 2px solid transparent; width: 100%; cursor: pointer;
+      background: transparent; color: var(--ink); font-family: inherit;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      color: var(--pink); border-color: var(--pink);
+      box-shadow: var(--glow-card);
+    }
+    .btn-primary:active {
+      background: rgba(255,20,147,.15); color: #fff;
+      box-shadow: var(--glow-card-hover);
+    }
+    .btn-ghost {
+      color: var(--cyan); border-color: rgba(0, 240, 255, 0.5);
+    }
+    .btn-ghost:active { box-shadow: 0 0 20px rgba(0,240,255,.35); color: #fff; }
+    .btn-orange {
+      color: var(--orange); border-color: var(--orange);
+      box-shadow: var(--glow-orange);
+    }
+    .btn-orange:active { background: rgba(255,107,0,.12); box-shadow: 0 0 28px rgba(255,107,0,.5); }
+    .btn.sm { width: auto; padding: 8px 12px; font-size: 11px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .style-card {
+      border: 1px solid rgba(255, 20, 147, 0.3);
+      border-radius: var(--radius); padding: 12px;
+      background: rgba(10, 10, 26, 0.8); cursor: pointer; min-height: 76px;
+      transition: all .3s;
+    }
+    .style-card.active {
+      border-color: var(--pink);
+      box-shadow: var(--glow-card-hover);
+      background: rgba(255, 20, 147, 0.1);
+    }
+    .style-card strong {
+      display: block; font-size: 13px; margin-bottom: 4px; font-weight: 800;
+      letter-spacing: .04em;
+    }
+    .style-card span { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .panel {
+      border: 1px solid rgba(255, 20, 147, 0.35);
+      border-radius: var(--radius); overflow: hidden;
+      background: var(--night); aspect-ratio: 1; position: relative;
+    }
+    .panel img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .panel .cap {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 8px;
+      font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+      color: #ddd; background: linear-gradient(transparent, rgba(0,0,0,.8));
+    }
+
+    .chapter-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(10, 10, 26, 0.65);
+      margin-bottom: 8px; cursor: pointer; transition: all .3s;
+    }
+    .chapter-item.active {
+      border-color: rgba(255, 20, 147, 0.55);
+      box-shadow: var(--glow-card);
+      background: rgba(255, 20, 147, 0.08);
+    }
+    .chapter-item .num {
+      color: var(--pink); font-weight: 800; font-size: 13px; width: 34px;
+      text-shadow: 0 0 8px rgba(255,20,147,.45);
+    }
+    .chapter-item .t { flex: 1; font-size: 14px; font-weight: 600; }
+    .chapter-item .st {
+      font-size: 10px; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+    }
+    .chapter-item .st.done { color: var(--cyan); text-shadow: var(--glow-cyan); }
+    .chapter-item .st.gen { color: var(--orange); text-shadow: var(--glow-orange); }
+
+    .reader-text {
+      font-size: 14px; line-height: 1.75; color: #e8e2f5;
+      background: rgba(10, 10, 26, 0.75);
+      border: 1px solid rgba(255, 20, 147, 0.25);
+      border-radius: var(--radius); padding: 14px; white-space: pre-wrap;
+    }
+    .tabs { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
+    .tab {
+      flex: 0 0 auto; padding: 8px 12px; border-radius: var(--radius);
+      font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,.12); color: var(--muted);
+      background: transparent; cursor: pointer; font-family: inherit;
+    }
+    .tab.active {
+      color: var(--pink); border-color: var(--pink);
+      box-shadow: var(--glow-card); background: rgba(255,20,147,.1);
+    }
+
+    .hero {
+      border: 2px solid rgba(255, 20, 147, 0.35);
+      border-radius: var(--radius);
+      background: rgba(10, 10, 26, 0.75);
+      backdrop-filter: blur(10px);
+      padding: 18px 16px; margin-bottom: 14px;
+      position: relative; overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute; left: 0; right: 0; bottom: 0; height: 42%;
+      background: linear-gradient(0deg, rgba(255,20,147,.12), transparent);
+      pointer-events: none;
+    }
+    .hero h2 {
+      margin: 0 0 6px; font-size: 1.45rem; font-weight: 900; line-height: 1.15;
+      color: var(--pink); text-shadow: var(--glow-pink);
+      animation: flicker 6s infinite;
+    }
+    .hero h2 .cyan { color: var(--cyan); text-shadow: var(--glow-cyan); }
+    .hero p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    @keyframes flicker {
+      0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.75} 94%{opacity:1} 96%{opacity:.85} 97%{opacity:1}
+    }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
+    .stat {
+      text-align: center; padding: 10px 6px; border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.28);
+    }
+    .stat b { display: block; font-size: 16px; color: var(--cyan); text-shadow: var(--glow-cyan); font-weight: 800; }
+    .stat span { font-size: 10px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: block; font-size: 11px; color: var(--muted);
+      margin-bottom: 6px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
+    }
+    .field input, .field textarea {
+      width: 100%; border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35); color: var(--ink);
+      padding: 12px; font-size: 14px; outline: none; font-family: inherit;
+    }
+    .field textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+    .field input:focus, .field textarea:focus {
+      border-color: var(--pink); box-shadow: var(--glow-card);
+    }
+
+    /* Neon loader — mirrors NeonLoader */
+    .neon-loader {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 28px 10px; color: var(--muted); font-size: 13px;
+    }
+    .neon-loader__neko {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 2px solid var(--pink);
+      box-shadow: var(--glow-card-hover);
+      object-fit: cover; background: var(--night-2);
+      animation: bob 1.2s ease-in-out infinite;
+    }
+    @keyframes bob {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .neon-loader__text { letter-spacing: .06em; }
+    .neon-loader__text span { color: var(--pink); }
+    .neon-loader__bar {
+      width: 120px; height: 3px; background: rgba(255,255,255,.1);
+      border-radius: var(--radius); overflow: hidden; position: relative;
+    }
+    .neon-loader__bar::after {
+      content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%;
+      background: linear-gradient(90deg, var(--pink), var(--cyan));
+      animation: slide 1.1s linear infinite;
+    }
+    @keyframes slide { to { left: 100%; } }
+
+    .empty {
+      text-align: center; padding: 32px 16px; color: var(--muted); font-size: 13px;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+      transform: translateX(-50%) translateY(16px);
+      background: rgba(10,10,26,.95); border: 1px solid rgba(255,20,147,.45);
+      color: #fff; padding: 10px 16px; border-radius: var(--radius);
+      font-size: 12px; letter-spacing: .04em;
+      opacity: 0; pointer-events: none; transition: .25s; z-index: 80;
+      max-width: 86%; box-shadow: var(--glow-card);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* —— Bottom nav —— desktop-like uppercase tracking —— */
+    .bottom-nav {
+      position: fixed; left: 50%; transform: translateX(-50%); bottom: 0;
+      width: min(430px, 100%); height: calc(var(--nav-h) + var(--safe-bottom));
+      padding: 6px 8px var(--safe-bottom);
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+      background: rgba(10, 10, 26, 0.95);
+      border-top: 2px solid rgba(255, 20, 147, 0.3);
+      box-shadow: 0 -6px 24px rgba(255,20,147,.12);
+      backdrop-filter: blur(12px); z-index: 40;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      color: var(--muted); font-size: 10px; cursor: pointer; border: none;
+      background: transparent; border-radius: var(--radius);
+      font-family: inherit; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    }
+    .nav-item .ico { font-size: 16px; line-height: 1; letter-spacing: 0; text-transform: none; }
+    .nav-item.active {
+      color: var(--pink); text-shadow: var(--glow-pink);
+      border-bottom: 1px solid var(--pink);
+    }
+    .nav-item.active .ico { filter: drop-shadow(0 0 6px rgba(255,20,147,.7)); }
+
+    .banner {
+      margin: 4px 0 14px; border-radius: var(--radius); overflow: hidden;
+      border: 2px solid rgba(255, 20, 147, 0.35);
+      min-height: 100px;
+      background:
+        linear-gradient(90deg, rgba(10,10,26,.88), rgba(10,10,26,.4)),
+        linear-gradient(135deg, #1a0a2e, #0d2030 50%, #2a0a20);
+      position: relative; padding: 16px;
+      box-shadow: var(--glow-card);
+    }
+    .banner h3 {
+      margin: 0 0 4px; font-size: 1.2rem; font-weight: 900;
+      color: var(--pink); text-shadow: var(--glow-pink);
+    }
+    .banner p {
+      margin: 0; font-size: 11px; color: var(--muted); max-width: 68%; line-height: 1.45;
+    }
+    .banner .neko {
+      position: absolute; right: 8px; bottom: 4px; width: 64px; height: 64px;
+      border-radius: 50%; object-fit: cover;
+      border: 2px solid rgba(255,20,147,.55);
+      box-shadow: var(--glow-card-hover);
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <div class="right">
+        <span>5G</span>
+        <div class="battery"><i></i></div>
+      </div>
+    </div>
+
+    <header class="appbar">
+      <img class="neko-ava" src="./mascot-neko.png" alt="ねこ" width="36" height="36" />
+      <div class="brand">
+        <div class="name">Maneko</div>
+        <span class="kana">漫猫 · ノベル漫画 · ねこ</span>
+      </div>
+      <button class="icon-btn" id="btnSettings" aria-label="设置">⚙</button>
+    </header>
+
+    <main id="screen" class="screen"></main>
+
+    <nav class="bottom-nav" id="nav">
+      <button class="nav-item active" data-tab="home"><span class="ico">📚</span>首页</button>
+      <button class="nav-item" data-tab="library"><span class="ico">🗂</span>書庫</button>
+      <button class="nav-item" data-tab="create"><span class="ico">✨</span>生成</button>
+      <button class="nav-item" data-tab="me"><span class="ico">🐱</span>ねこ</button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DEMO_KEY = 'maneko_mobile_demo';
+    const API_KEY = 'maneko_api_base';
+    // 打包 APK / 上线时改成你的 Render/Railway 后端，例如：
+    // const PROD_API = 'https://maneko-api.onrender.com';
+    const PROD_API = '';
+
+    const state = {
+      tab: 'home',
+      apiBase: localStorage.getItem(API_KEY) || PROD_API || '',
+      demo: localStorage.getItem(DEMO_KEY) !== '0' && !PROD_API,
+      novels: [],
+      currentNovel: null,
+      chapters: [],
+      currentChapter: null,
+      comic: { status: 'pending', images: [] },
+      styles: [],
+      styleId: 'auto',
+      loading: false,
+      pollTimer: null,
+      view: 'home',
+    };
+
+    const DEMO_STYLES = [
+      { id: 'auto', label: '自动适配', description: '按内容关键词匹配题材' },
+      { id: 'xianxia', label: '修仙', description: '仙山云海 · 御剑灵气' },
+      { id: 'wuxia', label: '武侠', description: '江湖刀剑 · 水墨意境' },
+      { id: 'scifi', label: '科幻', description: '星舰机甲 · 赛博都市' },
+      { id: 'mystery', label: '悬疑', description: '雨夜侦探 · 强对比' },
+      { id: 'neon-tokyo', label: '霓虹东京', description: '深夜街景 · 粉青霓虹' },
+      { id: 'romance', label: '言情', description: '柔光花瓣 · 情感特写' },
+      { id: 'fantasy', label: '奇幻', description: '魔法符文 · 异世界' },
+    ];
+
+    const DEMO_NOVELS = [
+      {
+        id: 'demo-1', title: '霓虹雨夜的修士', status: 'completed',
+        author: '漫猫演示', source: 'demo', progress: 0.35,
+        tags: ['修仙', '霓虹东京'], summary: '雨夜街头，少年遇见从宗门逃出的少女……',
+      },
+      {
+        id: 'demo-2', title: '星舰上的最后一封信', status: 'completed',
+        author: '漫猫演示', source: 'demo', progress: 0.1,
+        tags: ['科幻'], summary: '跃迁失败前，舰长写下了给地球的最后一封信。',
+      },
+      {
+        id: 'demo-3', title: '竹林客栈', status: 'completed',
+        author: '漫猫演示', source: 'demo', progress: 0,
+        tags: ['武侠'], summary: '刀光起处，江湖夜雨十年灯。',
+      },
+    ];
+
+    const DEMO_CHAPTERS = {
+      'demo-1': [
+        {
+          id: 'demo-1-c1', chapter_number: 1, title: '第一章 初遇',
+          content: '雨点砸在柏油路上，霓虹倒影被车轮碾碎。\n少年把伞倾向那个浑身湿透的少女：“你从哪里来？”\n少女抬眼，掌心微光一闪：“宗门。”\n巷口传来脚步声，她抓住他的手腕：“带我走。”',
+          comic_status: 'completed',
+        },
+        {
+          id: 'demo-1-c2', chapter_number: 2, title: '第二章 启程',
+          content: '穿过潮湿的巷子，远处高楼像倒插的剑。\n少女低声说：“他们不会放过我。”\n少年把外套披在她肩上：“那就一起躲。”',
+          comic_status: 'pending',
+        },
+      ],
+      'demo-2': [
+        {
+          id: 'demo-2-c1', chapter_number: 1, title: '第一章 跃迁失败',
+          content: '警报撕裂舰桥。跃迁窗口在三分钟后关闭。\n舰长把未寄出的信放进保险柜，对全员广播：“准备硬着陆。”',
+          comic_status: 'pending',
+        },
+      ],
+      'demo-3': [
+        {
+          id: 'demo-3-c1', chapter_number: 1, title: '第一回 客栈',
+          content: '竹影摇窗，酒旗半卷。\n黑衣客推门而入，刀未出鞘，杀气已满堂。',
+          comic_status: 'pending',
+        },
+      ],
+    };
+
+    const $ = (sel, el = document) => el.querySelector(sel);
+    const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+
+    function toast(msg) {
+      const t = $('#toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._h);
+      t._h = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function clock() {
+      const d = new Date();
+      $('#clock').textContent = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(clock, 30000); clock();
+
+    function apiUrl(path) {
+      return (state.apiBase || '').replace(/\/$/, '') + path;
+    }
+
+    async function api(path, options = {}) {
+      if (state.demo) throw new Error('demo-mode');
+      const res = await fetch(apiUrl(path), {
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+      });
+      if (!res.ok) {
+        let detail = res.statusText;
+        try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+        throw new Error(detail || '请求失败');
+      }
+      return res.json();
+    }
+
+    function statusLabel(s) {
+      return { pending: '待生成', generating: '生成中', completed: '已完成', error: '失败' }[s] || s || '—';
+    }
+
+    function styleLabel(id) {
+      const s = (state.styles || []).find(x => x.id === id);
+      return s ? s.label : id;
+    }
+
+    function panelUrl(chapterId, index) {
+      const n = String(index).padStart(2, '0');
+      if (state.demo || !state.apiBase) return demoPanelDataUri(index);
+      return apiUrl(`/comics/${chapterId}/panel_${n}.png`);
+    }
+
+    function demoPanelDataUri(index) {
+      const hues = [330, 190, 280, 20, 160, 300, 40, 220];
+      const h = hues[index % hues.length];
+      const h2 = (h + 40) % 360;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="hsl(${h},90%,45%)"/>
+          <stop offset="100%" stop-color="hsl(${h2},85%,22%)"/>
+        </linearGradient></defs>
+        <rect width="400" height="400" fill="#0a0a1a"/>
+        <rect x="14" y="14" width="372" height="372" fill="url(#g)" opacity="0.88"/>
+        <rect x="36" y="36" width="328" height="248" fill="none" stroke="#00f0ff" stroke-width="3" opacity="0.75"/>
+        <rect x="36" y="36" width="328" height="248" fill="none" stroke="#ff1493" stroke-width="1" opacity="0.35"/>
+        <text x="200" y="200" text-anchor="middle" fill="#fff" font-size="26" font-family="sans-serif" font-weight="700">PANEL ${index}</text>
+        <text x="200" y="340" text-anchor="middle" fill="#ff9ad0" font-size="14" font-family="sans-serif">ネオン東京</text>
+      </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    function neonLoader(text = '正在生成分镜') {
+      return `<div class="neon-loader" role="status">
+        <img class="neon-loader__neko" src="./mascot-neko.png" alt="" width="72" height="72" />
+        <div class="neon-loader__text">${escapeHtml(text)}<span>…</span></div>
+        <div class="neon-loader__bar" aria-hidden="true"></div>
+      </div>`;
+    }
+
+    async function loadNovels() {
+      state.loading = true; render();
+      try {
+        if (state.demo) state.novels = DEMO_NOVELS;
+        else state.novels = await api('/api/novels/');
+      } catch (e) {
+        toast('加载书架失败：' + e.message);
+      } finally {
+        state.loading = false; render();
+      }
+    }
+
+    async function loadStyles() {
+      try {
+        if (state.demo) state.styles = DEMO_STYLES;
+        else {
+          const data = await api('/api/comics/styles');
+          state.styles = data.styles || DEMO_STYLES;
+        }
+      } catch (_) { state.styles = DEMO_STYLES; }
+    }
+
+    async function openNovel(id) {
+      state.view = 'novel';
+      state.loading = true; render();
+      try {
+        if (state.demo) {
+          state.currentNovel = DEMO_NOVELS.find(n => n.id === id);
+          state.chapters = DEMO_CHAPTERS[id] || [];
+        } else {
+          state.currentNovel = await api(`/api/novels/${id}`);
+          state.chapters = await api(`/api/novels/${id}/chapters`);
+        }
+        state.currentChapter = state.chapters[0] || null;
+        if (state.currentChapter) await loadComicStatus(state.currentChapter.id);
+      } catch (e) { toast(e.message); }
+      finally { state.loading = false; render(); }
+    }
+
+    async function loadComicStatus(chapterId) {
+      try {
+        if (state.demo) {
+          const ch = state.chapters.find(c => c.id === chapterId);
+          const completed = ch && ch.comic_status === 'completed';
+          state.comic = {
+            status: completed ? 'completed' : (ch?.comic_status || 'pending'),
+            images: completed ? [1, 2, 3, 4] : [],
+          };
+        } else {
+          const st = await api(`/api/comics/${chapterId}/status`);
+          state.comic = { status: st.status, images: st.images || [] };
+        }
+      } catch (_) { state.comic = { status: 'pending', images: [] }; }
+    }
+
+    async function generateComic(force = false) {
+      const ch = state.currentChapter;
+      if (!ch) return toast('请先选择章节');
+      if (state.demo) {
+        state.comic.status = 'generating';
+        state.comic.images = [];
+        render();
+        let step = 0;
+        const timer = setInterval(() => {
+          step += 1;
+          state.comic.images = Array.from({ length: step }, (_, i) => i + 1);
+          if (step >= 4) {
+            clearInterval(timer);
+            state.comic.status = 'completed';
+            ch.comic_status = 'completed';
+            toast('演示漫画已生成');
+          }
+          render();
+        }, 700);
+        return;
+      }
+      try {
+        state.comic.status = 'generating';
+        render();
+        await api('/api/comics/generate', {
+          method: 'POST',
+          body: JSON.stringify({ chapter_id: ch.id, style_id: state.styleId || 'auto', force }),
+        });
+        pollStatus(ch.id);
+      } catch (e) {
+        toast('生成失败：' + e.message);
+        state.comic.status = 'error';
+        render();
+      }
+    }
+
+    function pollStatus(chapterId) {
+      clearTimeout(state.pollTimer);
+      let n = 0;
+      const tick = async () => {
+        n += 1;
+        try {
+          const st = await api(`/api/comics/${chapterId}/status`);
+          state.comic = { status: st.status, images: st.images || [] };
+          render();
+          if (st.status === 'generating' && n < 180) state.pollTimer = setTimeout(tick, 2000);
+          else if (st.status === 'completed') toast('漫画生成完成');
+        } catch (_) {
+          if (n < 20) state.pollTimer = setTimeout(tick, 3000);
+        }
+      };
+      state.pollTimer = setTimeout(tick, 1200);
+    }
+
+    async function uploadNovel(fileOrText, title) {
+      if (state.demo) {
+        const id = 'demo-' + Date.now();
+        DEMO_NOVELS.unshift({
+          id, title: title || '本地导入', status: 'completed', author: '我',
+          source: 'upload', progress: 0, tags: ['导入'],
+          summary: String(fileOrText).slice(0, 40),
+        });
+        DEMO_CHAPTERS[id] = [{
+          id: id + '-c1', chapter_number: 1, title: '第一章',
+          content: String(fileOrText).slice(0, 2000), comic_status: 'pending',
+        }];
+        state.novels = DEMO_NOVELS;
+        toast('已导入到演示书架');
+        render();
+        return;
+      }
+      const fd = new FormData();
+      if (fileOrText instanceof File) fd.append('file', fileOrText);
+      else fd.append('file', new Blob([fileOrText], { type: 'text/plain' }), (title || 'novel') + '.txt');
+      const res = await fetch(apiUrl('/api/novels/upload'), { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text() || '上传失败');
+      toast('上传成功');
+      await loadNovels();
+    }
+
+    function render() {
+      const el = $('#screen');
+      if (state.view === 'novel' && state.currentNovel) el.innerHTML = viewNovel();
+      else if (state.view === 'create') el.innerHTML = viewCreate();
+      else if (state.view === 'library') el.innerHTML = viewLibrary();
+      else if (state.view === 'me') el.innerHTML = viewMe();
+      else el.innerHTML = viewHome();
+      bindScreen();
+    }
+
+    function viewHome() {
+      const list = state.novels || [];
+      return `
+        <div class="banner">
+          <h3>ノベル → 漫画</h3>
+          <p>ネオン東京スタイル。上传小说，生成日漫分镜。</p>
+          <img class="neko" src="./mascot-neko.png" alt="ねこ" />
+        </div>
+        <div class="section-title">
+          <h2>我的<span class="accent">书架</span></h2>
+          <span>${list.length} books · ${state.demo ? 'demo' : 'live'}</span>
+        </div>
+        ${state.loading ? neonLoader('加载书架') : ''}
+        ${!state.loading && !list.length ? `<div class="empty">书架空空的<br/>去「生成」导入一本小说吧</div>` : ''}
+        ${list.map(n => `
+          <div class="card" data-open="${n.id}">
+            <div class="row">
+              <div class="cover">${(n.tags && n.tags[0] === '科幻') ? '🚀' : (n.tags && n.tags[0] === '武侠') ? '⚔️' : '📖'}</div>
+              <div class="meta">
+                <h3>${escapeHtml(n.title)}</h3>
+                <p>${escapeHtml(n.author || '未知作者')} · ${statusLabel(n.status)}</p>
+                <div class="chips">
+                  ${(n.tags || []).map(t => `<span class="badge">${escapeHtml(t)}</span>`).join('')}
+                  <span class="badge cyan">${Math.round((n.progress || 0) * 100)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function viewNovel() {
+      const n = state.currentNovel;
+      const ch = state.currentChapter;
+      const comic = state.comic;
+      return `
+        <div class="row" style="margin-bottom:12px">
+          <button class="btn btn-ghost sm" id="btnBack">← 首页</button>
+          <div class="meta"><h3 style="margin:0">${escapeHtml(n.title)}</h3></div>
+        </div>
+        <div class="tabs">
+          <button class="tab active">阅读 + 分鏡</button>
+          <button class="tab" id="tabStyle">风格 ${styleLabel(state.styleId)}</button>
+        </div>
+        <div class="section-title"><h2>章节</h2><span>${state.chapters.length} chapters</span></div>
+        ${state.chapters.map(c => `
+          <div class="chapter-item ${ch && c.id === ch.id ? 'active' : ''}" data-ch="${c.id}">
+            <div class="num">${c.chapter_number}</div>
+            <div class="t">${escapeHtml(c.title)}</div>
+            <div class="st ${c.comic_status === 'completed' ? 'done' : c.comic_status === 'generating' ? 'gen' : ''}">${statusLabel(c.comic_status)}</div>
+          </div>
+        `).join('')}
+        ${ch ? `
+          <div class="section-title" style="margin-top:16px"><h2>正文</h2></div>
+          <div class="reader-text">${escapeHtml(ch.content || '')}</div>
+          <div class="section-title" style="margin-top:16px">
+            <h2>漫画 · <span class="accent">分鏡</span></h2>
+            <span>${statusLabel(comic.status)}</span>
+          </div>
+          ${comic.status === 'generating' && !comic.images.length ? neonLoader('正在生成分镜') : ''}
+          ${comic.status === 'error' ? `
+            <div class="empty">生成失败</div>
+            <button class="btn btn-orange" id="btnGen" data-force="1">重试</button>
+          ` : ''}
+          ${(comic.status === 'completed' || (comic.status === 'generating' && comic.images.length)) ? `
+            <div class="panel-grid" style="margin-bottom:12px">
+              ${comic.images.map((img, i) => {
+                const idx = typeof img === 'string' ? Number((img.match(/panel_(\\d+)/) || [])[1] || i + 1) : (img.panel_index || i + 1);
+                return `<div class="panel"><img src="${panelUrl(ch.id, idx)}" alt="p${idx}"/><div class="cap">第 ${idx} 幕</div></div>`;
+              }).join('')}
+            </div>
+          ` : ''}
+          ${comic.status === 'pending' || (!comic.images.length && comic.status !== 'generating' && comic.status !== 'error') ? `
+            <div class="empty">该章节尚未生成漫画</div>
+            <button class="btn btn-primary" id="btnGen">生成漫画 · ${styleLabel(state.styleId)}</button>
+          ` : ''}
+          ${comic.status === 'completed' ? `
+            <button class="btn btn-ghost" id="btnGen" data-force="1">按当前风格重新生成</button>
+          ` : ''}
+        ` : `<div class="empty">暂无章节</div>`}
+      `;
+    }
+
+    function viewCreate() {
+      return `
+        <div class="hero">
+          <h2>导入<span class="cyan">小说</span></h2>
+          <p>选择本地 txt，或粘贴一段文字。演示模式保存在本机；连接后端后可真正分章出图。</p>
+          <button class="btn btn-primary" id="btnPickFile">选择 TXT 文件</button>
+          <input type="file" id="fileInput" accept=".txt,.md,.markdown" hidden />
+        </div>
+        <div class="card">
+          <div class="field">
+            <label>标题</label>
+            <input id="pasteTitle" placeholder="未命名小说" />
+          </div>
+          <div class="field">
+            <label>正文</label>
+            <textarea id="pasteText" placeholder="第一章 …&#10;&#10;把小说内容粘贴到这里"></textarea>
+          </div>
+          <button class="btn btn-primary" id="btnPasteImport">导入并加入书架</button>
+        </div>
+        <div class="section-title"><h2>画风<span class="accent">预设</span></h2><span>tap to select</span></div>
+        <div class="grid2">
+          ${(state.styles.length ? state.styles : DEMO_STYLES).map(s => `
+            <div class="style-card ${state.styleId === s.id ? 'active' : ''}" data-style="${s.id}">
+              <strong>${escapeHtml(s.label)}</strong>
+              <span>${escapeHtml(s.description || '')}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function viewLibrary() {
+      const sources = [
+        { id: 'upload', name: '本地上传', desc: 'txt / md 文件', ico: '📁' },
+        { id: 'builtin', name: '演示佳作', desc: '内置示例章节', ico: '⭐' },
+        { id: 'gutenberg', name: '古登堡', desc: '公版英文书（需后端）', ico: '🏛' },
+      ];
+      return `
+        <div class="section-title"><h2>书源</h2><span>${state.demo ? 'demo' : 'live'}</span></div>
+        ${sources.map((s, i) => `
+          <div class="card ${i===1?'cyan-border':i===2?'orange-border':''}" data-source="${s.id}">
+            <div class="row">
+              <div class="cover">${s.ico}</div>
+              <div class="meta">
+                <h3>${s.name}</h3>
+                <p>${s.desc}</p>
+              </div>
+              <span class="badge orange">OPEN</span>
+            </div>
+          </div>
+        `).join('')}
+        <div class="section-title" style="margin-top:8px"><h2>快捷</h2></div>
+        <div class="grid2">
+          <button class="btn btn-ghost" id="btnGoCreate">去导入</button>
+          <button class="btn btn-ghost" id="btnRefresh">刷新书架</button>
+        </div>
+      `;
+    }
+
+    function viewMe() {
+      return `
+        <div class="hero">
+          <h2>Maneko<span class="cyan"> · 漫猫</span></h2>
+          <p>ネオン東京 · ねこ看板娘<br/>Novel in, panels out.</p>
+          <div class="stats">
+            <div class="stat"><b>${state.novels.length}</b><span>书架</span></div>
+            <div class="stat"><b>${state.demo ? 'DEMO' : 'API'}</b><span>模式</span></div>
+            <div class="stat"><b>MIT</b><span>协议</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h2>连接设置</h2></div>
+          <div class="field">
+            <label>后端 API（例 http://192.168.1.8:8001）</label>
+            <input id="apiBase" value="${escapeAttr(state.apiBase)}" placeholder="http://127.0.0.1:8001" />
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="btn btn-ghost" id="btnDemoOn">演示模式</button>
+            <button class="btn btn-primary" id="btnConnect">连接并刷新</button>
+          </div>
+          <p class="muted" style="margin-top:10px">演示模式无需后端；关闭后将请求 Maneko API。手机需访问电脑局域网 IP:8001。</p>
+        </div>
+        <div class="card cyan-border">
+          <div class="section-title"><h2>关于</h2></div>
+          <p class="muted" style="margin:0;line-height:1.65">
+            Maneko 是基于 AgentScope 的 AI 小说→日漫分镜应用。<br/>
+            本页与 Web 版共用 <strong style="color:var(--pink)">Neon Tokyo</strong> 视觉体系。
+          </p>
+        </div>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    function bindScreen() {
+      $$('[data-open]').forEach(el => el.onclick = () => openNovel(el.dataset.open));
+      $$('[data-ch]').forEach(el => el.onclick = async () => {
+        state.currentChapter = state.chapters.find(c => c.id === el.dataset.ch);
+        await loadComicStatus(el.dataset.ch);
+        render();
+      });
+      $$('[data-style]').forEach(el => el.onclick = () => {
+        state.styleId = el.dataset.style;
+        toast('风格：' + styleLabel(state.styleId));
+        render();
+      });
+      const back = $('#btnBack');
+      if (back) back.onclick = () => { state.view = 'home'; state.tab = 'home'; syncNav(); loadNovels(); };
+      const gen = $('#btnGen');
+      if (gen) gen.onclick = () => generateComic(gen.dataset.force === '1');
+      const pick = $('#btnPickFile');
+      if (pick) pick.onclick = () => $('#fileInput').click();
+      const file = $('#fileInput');
+      if (file) file.onchange = async (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        try {
+          await uploadNovel(await f.text(), f.name.replace(/\.(txt|md|markdown)$/i, ''));
+        } catch (err) { toast(err.message); }
+      };
+      const paste = $('#btnPasteImport');
+      if (paste) paste.onclick = async () => {
+        const text = $('#pasteText').value.trim();
+        if (!text) return toast('请粘贴正文');
+        await uploadNovel(text, $('#pasteTitle').value.trim() || '未命名小说');
+      };
+      const goCreate = $('#btnGoCreate');
+      if (goCreate) goCreate.onclick = () => { state.tab = 'create'; state.view = 'create'; syncNav(); render(); };
+      const refresh = $('#btnRefresh');
+      if (refresh) refresh.onclick = () => loadNovels();
+      $$('[data-source]').forEach(el => el.onclick = () => {
+        if (el.dataset.source === 'upload') {
+          state.tab = 'create'; state.view = 'create'; syncNav(); render();
+        } else {
+          toast(state.demo ? '演示模式：请在「ねこ」连接后端' : '书源检索需后端 /api/library');
+        }
+      });
+      const demoOn = $('#btnDemoOn');
+      if (demoOn) demoOn.onclick = () => {
+        state.demo = true; localStorage.setItem(DEMO_KEY, '1');
+        toast('已开启演示模式'); loadNovels();
+      };
+      const connect = $('#btnConnect');
+      if (connect) connect.onclick = async () => {
+        const base = $('#apiBase').value.trim().replace(/\/$/, '');
+        state.apiBase = base;
+        localStorage.setItem(API_KEY, state.apiBase);
+        state.demo = !state.apiBase;
+        localStorage.setItem(DEMO_KEY, state.demo ? '1' : '0');
+        if (!state.apiBase) { toast('已切回演示模式'); loadNovels(); return; }
+        try {
+          await api('/health');
+          toast('连接成功');
+          await loadStyles();
+          await loadNovels();
+        } catch (_) {
+          toast('无法连接后端，检查地址/CORS');
+        }
+      };
+      const tabStyle = $('#tabStyle');
+      if (tabStyle) tabStyle.onclick = () => { state.tab = 'create'; state.view = 'create'; syncNav(); render(); };
+    }
+
+    function syncNav() {
+      $$('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === state.tab));
+    }
+
+    $$('.nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.tab = btn.dataset.tab;
+        if (state.tab === 'home') { state.view = 'home'; loadNovels(); }
+        else if (state.tab === 'create') { state.view = 'create'; render(); }
+        else if (state.tab === 'library') { state.view = 'library'; render(); }
+        else if (state.tab === 'me') { state.view = 'me'; render(); }
+        syncNav();
+      });
+    });
+
+    $('#btnSettings').onclick = () => { state.tab = 'me'; state.view = 'me'; syncNav(); render(); };
+
+    (async function boot() {
+      await loadStyles();
+      await loadNovels();
+    })();
+  </script>
+</body>
+</html>

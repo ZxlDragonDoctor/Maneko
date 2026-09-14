@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List
 from app.database import get_db
 from app.services.novel_service import NovelService
+from app.utils.comic_paths import normalize_paths
 
 router = APIRouter()
 
@@ -30,7 +31,7 @@ async def get_novel_chapters(novel_id: str, db: Session = Depends(get_db)):
             title=ch.title,
             content=ch.content,
             comic_status=ch.comic_status,
-            comic_images=ch.comic_images or []
+            comic_images=normalize_paths(ch.comic_images or [])
         ) for ch in chapters
     ]
 
@@ -48,5 +49,5 @@ async def get_chapter(chapter_id: str, db: Session = Depends(get_db)):
         title=chapter.title,
         content=chapter.content,
         comic_status=chapter.comic_status,
-        comic_images=chapter.comic_images or []
+        comic_images=normalize_paths(chapter.comic_images or [])
     )

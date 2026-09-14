@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import useNovelStore from '../stores/novelStore'
-import useComicStore from '../stores/comicStore'
 import NovelReader from '../components/NovelReader'
 import ComicViewer from '../components/ComicViewer'
 import StylePicker from '../components/StylePicker'

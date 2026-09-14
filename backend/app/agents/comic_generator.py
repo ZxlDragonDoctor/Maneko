@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Dict, Optional
+from typing import Awaitable, Callable, Dict, List, Optional
 
 from app.agents.comic_style import build_negative_prompt, build_panel_prompt
 from app.agents.image_providers import ImageProvider, create_image_provider
@@ -26,6 +26,7 @@ class ComicGeneratorAgent:
         style_id: Optional[str] = None,
         novel_content: str = "",
         novel_title: str = "",
+        on_panel: Optional[Callable[[int, Optional[str]], Awaitable[None]]] = None,
     ) -> List[Optional[str]]:
         chapter_dir = settings.COMIC_DIR / chapter_id
         chapter_dir.mkdir(parents=True, exist_ok=True)
@@ -45,6 +46,12 @@ class ComicGeneratorAgent:
             except Exception as e:
                 print(f"生成分镜{i + 1}异常: {e}")
                 image_paths.append(None)
+
+            if on_panel is not None:
+                try:
+                    await on_panel(i, image_paths[-1])
+                except Exception as e:
+                    print(f"on_panel callback failed: {e}")
 
             if self.provider.name != "mock":
                 await asyncio.sleep(1)

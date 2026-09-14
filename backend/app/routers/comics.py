@@ -10,6 +10,7 @@ from app.models.chapter import Chapter
 from app.models.novel import Novel
 from app.services.comic_service import ComicService
 from app.services.novel_service import NovelService
+from app.utils.comic_paths import to_public_comic_path
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ router = APIRouter()
 class GenerateRequest(BaseModel):
     chapter_id: str
     style_id: Optional[str] = None  # auto | xianxia | scifi | ...
+    force: bool = False  # allow restart even if status is generating
 
 
 class ComicStatusResponse(BaseModel):
@@ -32,13 +34,15 @@ class ComicPanelResponse(BaseModel):
     image_path: str
 
 
-async def generate_comic_task(chapter_id: str, style_id: Optional[str]):
+async def generate_comic_task(chapter_id: str, style_id: Optional[str], force: bool = False):
     from app.database import SessionLocal
 
     db = SessionLocal()
     try:
         service = ComicService(db)
-        await service.generate_chapter_comic(chapter_id, style_id=style_id)
+        await service.generate_chapter_comic(chapter_id, style_id=style_id, force=force)
+    except Exception as e:
+        print(f"background generate failed for {chapter_id}: {e}")
     finally:
         db.close()
 
@@ -85,13 +89,18 @@ async def generate_comic(
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
 
-    if chapter.comic_status == "generating":
-        raise HTTPException(status_code=400, detail="该章节正在生成中")
+    if chapter.comic_status == "generating" and not request.force:
+        # try auto-recover if panels already on disk
+        service = ComicService(db)
+        status = service.get_chapter_status(request.chapter_id)
+        if status["status"] == "generating":
+            raise HTTPException(status_code=400, detail="该章节正在生成中")
 
     background_tasks.add_task(
         generate_comic_task,
         request.chapter_id,
         request.style_id,
+        request.force,
     )
 
     return {
@@ -120,7 +129,7 @@ async def get_comic_images(chapter_id: str, db: Session = Depends(get_db)):
             id=p.id,
             panel_index=p.panel_index,
             script=p.script,
-            image_path=p.image_path,
+            image_path=to_public_comic_path(p.image_path) or p.image_path,
         )
         for p in panels
     ]

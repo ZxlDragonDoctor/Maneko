@@ -1,5 +1,8 @@
 from typing import List, Optional
+from pathlib import Path
+
 from sqlalchemy.orm import Session
+from app.config import settings
 from app.models.novel import Novel
 from app.models.chapter import Chapter
 from app.agents.novel_parser import NovelParserAgent
@@ -43,13 +46,23 @@ class NovelService:
             novel = self.db.query(Novel).filter(Novel.id == novel_id).first()
             if novel is None:
                 raise
-            self.db.add(Chapter(
-                novel_id=novel_id,
-                chapter_number=1,
-                title="全文",
-                content=content,
-                comic_status="pending",
-            ))
+            try:
+                from app.agents.novel_parser import split_chapters_locally
+
+                chapters_data = split_chapters_locally(content) or [
+                    {"title": "全文", "content": content}
+                ]
+            except Exception:
+                chapters_data = [{"title": "全文", "content": content}]
+
+            for i, ch_data in enumerate(chapters_data):
+                self.db.add(Chapter(
+                    novel_id=novel_id,
+                    chapter_number=i + 1,
+                    title=ch_data.get("title", f"第{i+1}章"),
+                    content=ch_data.get("content", "") or content,
+                    comic_status="pending",
+                ))
             novel.status = "completed"
             self.db.commit()
             self.db.refresh(novel)
@@ -65,13 +78,28 @@ class NovelService:
         return self.db.query(Novel).order_by(Novel.created_at.desc()).all()
 
     def delete_novel(self, novel_id: str) -> bool:
-        """删除小说"""
+        """删除小说（含章节漫画文件）"""
         novel = self.get_novel(novel_id)
-        if novel:
-            self.db.delete(novel)
-            self.db.commit()
-            return True
-        return False
+        if not novel:
+            return False
+
+        chapter_ids = [ch.id for ch in (novel.chapters or [])]
+        for cid in chapter_ids:
+            chapter_dir = Path(settings.COMIC_DIR) / cid
+            if chapter_dir.is_dir():
+                for f in chapter_dir.glob("panel_*.png"):
+                    try:
+                        f.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                try:
+                    chapter_dir.rmdir()
+                except OSError:
+                    pass
+
+        self.db.delete(novel)
+        self.db.commit()
+        return True
 
     def get_chapters(self, novel_id: str) -> List[Chapter]:
         """获取小说的所有章节"""

@@ -92,8 +92,10 @@ class NovelParserAgent:
 请返回JSON格式的章节列表，包含title和content字段。只返回JSON，不要其他内容。"""
 
         try:
+            import asyncio
+
             user_msg = UserMsg(name="user", content=prompt)
-            reply = await self.agent.reply(user_msg)
+            reply = await asyncio.wait_for(self.agent.reply(user_msg), timeout=45)
             text = reply.get_text_content()
 
             start = text.find('[')

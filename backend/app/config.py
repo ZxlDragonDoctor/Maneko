@@ -1,14 +1,19 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from pathlib import Path
+from typing import List, Union
+import json
+import os
+
 
 class Settings(BaseSettings):
     APP_NAME: str = "Maneko · 漫猫"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
-    
+
     # Database
     DATABASE_URL: str = "sqlite:///./novels.db"
-    
+
     # DashScope
     DASHSCOPE_API_KEY: str = ""
     QWEN_MODEL: str = "qwen3.8-max"
@@ -31,26 +36,49 @@ class Settings(BaseSettings):
     COMIC_STYLE: str = "neon-tokyo"
 
     # MiMo image generation (OpenAI-compatible /v1/images/generations)
-    # base_url may include /v1; endpoint is joined as {base}/images/generations
     MIMO_IMAGE_BASE_URL: str = "http://127.0.0.1:7342/v1"
     MIMO_IMAGE_API_KEY: str = ""
     MIMO_IMAGE_MODEL: str = "mimo-image"
     MIMO_IMAGE_SIZE: str = "1024x1024"
     MIMO_IMAGE_TIMEOUT: float = 120.0
-    
+
     # File Storage
     UPLOAD_DIR: Path = Path("uploads")
     COMIC_DIR: Path = Path("comics")
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
-    
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
-    
+
+    # CORS — JSON array or comma-separated origins
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v):
+        if isinstance(v, list):
+            return v
+        if not v:
+            return []
+        s = str(v).strip()
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list):
+                    return [str(x) for x in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [p.strip() for p in s.split(",") if p.strip()]
+
     class Config:
         env_file = ".env"
 
+
 settings = Settings()
 
-# Ensure directories exist
-settings.UPLOAD_DIR.mkdir(exist_ok=True)
-settings.COMIC_DIR.mkdir(exist_ok=True)
+# Ensure directories exist (serverless-friendly paths already absolute if provided)
+settings.UPLOAD_DIR = Path(settings.UPLOAD_DIR)
+settings.COMIC_DIR = Path(settings.COMIC_DIR)
+settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+settings.COMIC_DIR.mkdir(parents=True, exist_ok=True)

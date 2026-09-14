@@ -48,7 +48,37 @@ function ComicViewer({ currentChapter, currentNovel, styleId = 'auto' }) {
       )
     }
     if (comicData.status === 'generating') {
-      return <NeonLoader text="正在生成分镜" />
+      const partial = comicData.images || []
+      return (
+        <div>
+          <NeonLoader text="正在生成分镜" />
+          {partial.length > 0 && (
+            <div className="mt-6">
+              <p className="text-[11px] text-gray-400 mb-3">已出图 {partial.length} 格…</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {partial.map((image, index) => {
+                  const idx = toPanelIndex(image, index)
+                  return (
+                    <figure
+                      key={image?.id || idx || index}
+                      className="m-0 border border-[#00f0ff]/35 rounded-sm overflow-hidden bg-[#12041e]"
+                    >
+                      <img
+                        src={panelUrl(currentChapter.id, idx)}
+                        alt={`分镜 ${idx}`}
+                        className="w-full h-auto bg-[#12041e]"
+                      />
+                      <figcaption className="px-2 py-1 text-[11px] text-gray-400 border-t border-[#00f0ff]/20">
+                        第 {idx} 幕 · 生成中
+                      </figcaption>
+                    </figure>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )
     }
     if (comicData.status === 'error') {
       return (

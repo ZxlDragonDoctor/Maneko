@@ -41,8 +41,12 @@ export const chapterApi = {
 }
 
 export const comicApi = {
-  generate: (chapterId, styleId) =>
-    api.post('/comics/generate', { chapter_id: chapterId, style_id: styleId || 'auto' }),
+  generate: (chapterId, styleId, { force = false } = {}) =>
+    api.post('/comics/generate', {
+      chapter_id: chapterId,
+      style_id: styleId || 'auto',
+      force: !!force,
+    }),
   getStatus: (chapterId) => api.get(`/comics/${chapterId}/status`),
   getImages: (chapterId) => api.get(`/comics/${chapterId}/images`),
   getStyles: () => api.get('/comics/styles'),

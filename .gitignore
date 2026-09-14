@@ -33,6 +33,14 @@ env/
 # Node
 node_modules/
 frontend/dist/
+mobile-native/node_modules/
+mobile-native/www/
+mobile-native/android/app/build/
+mobile-native/android/.gradle/
+mobile-native/android/local.properties
+*.keystore
+*.apk
+backend/uvicorn.*.log
 
 # Uploads and generated comics
 uploads/

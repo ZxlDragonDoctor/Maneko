@@ -199,10 +199,40 @@ cd backend
 python -m pytest tests/ -v
 ```
 
+## 发布（免费方案）
+
+| 用途 | 平台 | 位置 |
+|------|------|------|
+| Web 前端 | **Vercel** Free | Root = `frontend`，`vercel.json` 反代 `/api` |
+| 移动 App（PWA/APK 源码） | **Vercel** Free | Root = `maneko-app` |
+| 后端 API | **Render** Free（Docker） | 根目录 `Dockerfile.backend` + `render.yaml` |
+| 安卓 APK | **Capacitor** | `mobile-native/`，一键 `scripts/build-apk.ps1` |
+
+完整步骤（含环境变量、CORS、签名）：**[docs/RELEASE.md](docs/RELEASE.md)**
+
+```powershell
+# 同步生产 App 到 Capacitor 并打调试 APK
+.\scripts\build-apk-www.ps1
+.\scripts\build-apk.ps1
+
+# 打包前写入生产后端地址
+.\scripts\set-prod-api.ps1 -ApiBase https://maneko-api.onrender.com
+```
+
+### 产品入口
+
+| 入口 | 说明 |
+|------|------|
+| `frontend/` | 桌面/平板 Web 全功能站 |
+| `maneko-app/` | 移动产品（书架/生成/漫画集/设置），可 PWA 安装 |
+| `mobile-native/` | Capacitor Android 工程（打 APK） |
+
 ## 相关文档
 
 - [API 文档](docs/API.md)
 - [部署指南](docs/DEPLOYMENT.md)
+- [发布 / Vercel / APK](docs/RELEASE.md)
+- [移动 App](maneko-app/README.md)
 - [架构设计](docs/superpowers/specs/2026-09-09-ai-novel-to-comic-design.md)
 
 ## 口号

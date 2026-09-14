@@ -267,11 +267,24 @@ def build_panel_prompt(
     """Compose image prompt: genre style + panel content."""
     _, base_prompt, default_notes, _ = _prompt_core(style_id, novel_content, novel_title)
 
-    scene = (panel.get("scene") or "").strip()
-    characters = panel.get("characters") or []
-    action = (panel.get("action") or "").strip()
-    mood = (panel.get("mood") or "").strip()
-    style_notes = (panel.get("style_notes") or "").strip() or default_notes
+    def _s(v) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, (list, tuple)):
+            return " ".join(_s(x) for x in v)
+        return str(v).strip()
+
+    scene = _s(panel.get("scene"))
+    raw_chars = panel.get("characters") or []
+    if isinstance(raw_chars, str):
+        characters = [c.strip() for c in raw_chars.split(",") if c.strip()]
+    elif isinstance(raw_chars, (list, tuple)):
+        characters = [_s(c) for c in raw_chars if _s(c)]
+    else:
+        characters = []
+    action = _s(panel.get("action"))
+    mood = _s(panel.get("mood"))
+    style_notes = _s(panel.get("style_notes")) or default_notes
 
     parts = [
         base_prompt,

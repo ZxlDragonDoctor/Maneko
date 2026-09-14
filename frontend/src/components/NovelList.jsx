@@ -40,6 +40,12 @@ function NovelList() {
         >
           上传小说
         </button>
+        <a
+          href="/maneko-app/"
+          className="relative ml-3 inline-flex px-6 py-3 font-bold uppercase tracking-wider transition-all duration-300 rounded-sm text-[#00f0ff] border-2 border-[#00f0ff]/50 hover:shadow-[0_0_20px_rgba(0,240,255,0.35)] active:scale-95"
+        >
+          移动端 App
+        </a>
       </section>
 
       <h2 className="font-bold text-2xl md:text-3xl mb-1">

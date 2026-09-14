@@ -117,8 +117,10 @@ class ComicScriptAgent:
 请返回JSON格式的分镜列表，每个分镜包含scene、characters、action、dialogue、mood、style_notes字段。只返回JSON，不要其他内容。"""
 
         try:
+            import asyncio
+
             user_msg = UserMsg(name="user", content=prompt)
-            reply = await self._agent.reply(user_msg)
+            reply = await asyncio.wait_for(self._agent.reply(user_msg), timeout=60)
             text = reply.get_text_content()
 
             start = text.find('[')

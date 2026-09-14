@@ -18,8 +18,19 @@ function App() {
             <Route path="/comics/:id" element={<ComicCollectionPage />} />
           </Routes>
         </main>
-        <footer className="border-t border-[#ff1493]/25 py-6 text-center text-xs text-gray-400">
-          <span className="text-[#bc13fe]">ネオン東京</span> · AI 小说漫画生成器
+        <footer className="border-t border-[#ff1493]/25 py-8 text-center text-xs text-gray-400 space-y-2">
+          <div>
+            <span className="text-[#ff1493]">Maneko · 漫猫</span>
+            {' · '}
+            <span className="text-[#bc13fe]">ネオン東京</span>
+            {' · '}
+            AI 小说 → 日漫分镜
+          </div>
+          <div className="flex items-center justify-center gap-4">
+            <a className="text-[#00f0ff] hover:underline" href="/maneko-app/">移动端</a>
+            <a className="text-[#00f0ff] hover:underline" href="https://github.com/ZxlDragonDoctor/Maneko" target="_blank" rel="noreferrer">GitHub</a>
+            <span>MIT License</span>
+          </div>
         </footer>
       </div>
     </Router>

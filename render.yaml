@@ -1,5 +1,5 @@
-# Render.com free web service (FastAPI)
-# 把本文件放在仓库根，或在 Render Dashboard 手动创建 Web Service
+# Render.com free web service (FastAPI backend for Maneko)
+# Dashboard: New → Blueprint → 连接本仓库；或手动 New Web Service
 services:
   - type: web
     name: maneko-api
@@ -10,18 +10,25 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
+      # 必填：阿里云 DashScope Key（无 Key 时分章/分镜走本地回退，出图用 mock）
       - key: DASHSCOPE_API_KEY
         sync: false
+      # mock = 离线可跑通；qwen = 真实出图
       - key: IMAGE_PROVIDER
         value: qwen
       - key: QWEN_IMAGE_MODEL
-        value: qwen-image
+        value: qwen-image-3.0
       - key: QWEN_IMAGE_MODE
         value: sdk
       - key: DATABASE_URL
         value: sqlite:////tmp/novels.db
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: COMIC_DIR
+        value: /tmp/comics
+      # 前端 Vercel 域名 + Capacitor WebView + 本机联调
       - key: CORS_ORIGINS
-        value: '["http://localhost:5173","https://maneko.vercel.app","https://maneko-app.vercel.app"]'
+        value: '["http://localhost:5173","http://127.0.0.1:5173","https://localhost","capacitor://localhost","http://localhost","https://maneko.vercel.app"]'
     disk:
       name: maneko-data
       mountPath: /tmp

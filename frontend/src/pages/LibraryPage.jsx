@@ -398,7 +398,7 @@ function LibraryPage() {
               <NeonLoader text="正在搜索书源" />
             ) : sourceBooks.length === 0 ? (
               <div className="text-center py-12">
-                <img src="/mascot-neko.png" alt="" className="w-16 h-16 mx-auto mb-3 rounded-full border border-[#ff1493]/40 opacity-80" />
+                <img src="/mascot-neko.png" alt="" className="w-16 h-16 mx-auto mb-3 rounded-full border-2 border-[#ff1493]/50 object-cover object-top opacity-90 shadow-[0_0_16px_rgba(255,20,147,0.35)]" />
                 <p className="text-gray-400 text-sm mb-2">当前书源暂无结果。可搜索「龙族」「dracula」「西游」等，或本地上传小说。</p>
                 <p className="text-[11px] text-gray-500">切换书源会自动加载默认书目</p>
               </div>

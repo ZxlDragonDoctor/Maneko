@@ -4,13 +4,13 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 bg-[#0a0a1a]/95 backdrop-blur-md border-b-2 border-[#ff1493]/30 shadow-[0_0_15px_rgba(255,20,147,0.3)]">
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-6">
-        <Link to="/" className="flex items-center gap-2.5 font-bold text-xl md:text-2xl text-[#ff1493] [text-shadow:0_0_10px_rgba(255,20,147,0.6)]">
+        <Link to="/" className="flex items-center gap-2.5 font-bold text-xl md:text-2xl text-[#ff1493] [text-shadow:0_0_10px_rgba(255,20,147,0.6)] [animation:neonFlicker_6s_linear_infinite]">
           <img
             src="/mascot-neko.png"
             alt="猫娘看板娘"
             width={36}
             height={36}
-            className="w-9 h-9 rounded-full border-2 border-[#ff1493]/60 shadow-[0_0_12px_rgba(255,20,147,0.45)] object-cover bg-[#12041e]"
+            className="w-9 h-9 rounded-full border-2 border-[#ff1493]/70 shadow-[0_0_12px_rgba(255,20,147,0.5)] object-cover object-top bg-[#12041e]"
           />
           <span className="leading-tight">
             Maneko

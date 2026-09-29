@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { novelApi, chapterApi } from '../api/client'
 
-const useNovelStore = create((set, get) => ({
+const useNovelStore = create((set) => ({
   novels: [],
   currentNovel: null,
   chapters: [],
@@ -19,13 +19,23 @@ const useNovelStore = create((set, get) => ({
     }
   },
 
-  uploadNovel: async (file) => {
+  uploadNovel: async (payload) => {
     set({ loading: true, error: null })
     try {
-      const novel = await novelApi.upload(file)
+      // payload: File, or { file, title } / { text, title }
+      let novel
+      if (payload instanceof File || payload instanceof Blob) {
+        novel = await novelApi.upload(payload)
+      } else if (payload?.file) {
+        novel = await novelApi.upload(payload.file, payload.title)
+      } else if (payload?.text != null) {
+        novel = await novelApi.uploadText(payload.text, payload.title)
+      } else {
+        throw new Error('无效的上传内容')
+      }
       set((state) => ({
         novels: [novel, ...state.novels],
-        loading: false
+        loading: false,
       }))
       return novel
     } catch (error) {
@@ -41,7 +51,6 @@ const useNovelStore = create((set, get) => ({
       set({ currentNovel: novel, loading: false })
 
       const chapters = await chapterApi.getByNovel(id)
-      // Auto-select first chapter so comic panel is not empty
       set({ chapters, currentChapter: chapters[0] || null })
 
       return novel
@@ -59,7 +68,7 @@ const useNovelStore = create((set, get) => ({
     try {
       await novelApi.delete(id)
       set((state) => ({
-        novels: state.novels.filter(n => n.id !== id)
+        novels: state.novels.filter(n => n.id !== id),
       }))
     } catch (error) {
       set({ error: error.message })

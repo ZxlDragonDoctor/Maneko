@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -45,31 +45,49 @@ def _to_response(n) -> NovelResponse:
 
 @router.post("/upload", response_model=NovelResponse)
 async def upload_novel(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    text: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """上传小说文件（.txt / .md）"""
-    name = (file.filename or "").lower()
-    if not name.endswith((".txt", ".md", ".markdown")):
-        raise HTTPException(status_code=400, detail="只支持 .txt / .md 文本文件")
+    """上传小说：支持文件（.txt / .md）或直接粘贴正文；可自定义标题。"""
+    text_content = None
+    default_title = "未命名小说"
 
-    content = await file.read()
+    if file is not None:
+        name = (file.filename or "").lower()
+        if not name.endswith((".txt", ".md", ".markdown")):
+            raise HTTPException(status_code=400, detail="只支持 .txt / .md 文本文件")
 
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="文件大小不能超过10MB")
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="文件大小不能超过10MB")
 
-    try:
-        text_content = content.decode('utf-8')
-    except UnicodeDecodeError:
         try:
-            text_content = content.decode('gbk')
+            text_content = content.decode('utf-8')
         except UnicodeDecodeError:
-            raise HTTPException(status_code=400, detail="无法解析文件编码")
+            try:
+                text_content = content.decode('gbk')
+            except UnicodeDecodeError:
+                raise HTTPException(status_code=400, detail="无法解析文件编码（支持 UTF-8 / GBK）")
 
-    title = file.filename.rsplit('.', 1)[0]
+        default_title = (file.filename or default_title).rsplit('.', 1)[0]
+    elif text is not None:
+        text_content = text
+        if len(text_content.encode("utf-8")) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="正文不能超过10MB")
+    else:
+        raise HTTPException(status_code=400, detail="请上传文件或粘贴正文")
+
+    if not (text_content or "").strip():
+        raise HTTPException(status_code=400, detail="正文为空")
+
+    final_title = (title or "").strip() or default_title
+    if len(final_title) > 80:
+        final_title = final_title[:80]
 
     service = NovelService(db)
-    novel = await service.upload_novel(title, text_content)
+    novel = await service.upload_novel(final_title, text_content)
 
     return _to_response(novel)
 

@@ -107,7 +107,7 @@ function NovelList() {
               onClick={() => setShowUpload(true)}
               className="px-6 py-3 font-bold uppercase tracking-wider transition-all duration-300 rounded-sm bg-transparent text-[#ff1493] border-2 border-[#ff1493] shadow-[0_0_15px_rgba(255,20,147,0.3)] hover:shadow-[0_0_30px_rgba(255,20,147,0.5)] active:scale-95"
             >
-              上传小说
+              新增项目
             </button>
             <a
               href="/maneko-app/"

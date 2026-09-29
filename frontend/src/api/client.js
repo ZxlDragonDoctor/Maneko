@@ -23,11 +23,22 @@ api.interceptors.response.use(
 )
 
 export const novelApi = {
-  upload: (file) => {
+  upload: (file, title) => {
     const formData = new FormData()
     formData.append('file', file)
+    if (title) formData.append('title', title)
     return api.post('/novels/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000,
+    })
+  },
+  uploadText: (text, title) => {
+    const formData = new FormData()
+    formData.append('text', text)
+    if (title) formData.append('title', title)
+    return api.post('/novels/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000,
     })
   },
   getList: () => api.get('/novels/'),

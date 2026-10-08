@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -10,13 +8,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      IMAGE_PROVIDER: ${IMAGE_PROVIDER:-qwen}
+      QWEN_IMAGE_MODEL: ${QWEN_IMAGE_MODEL:-qwen-image-3.0}
+      DATABASE_URL: sqlite:////var/lib/maneko/novels.db
+      UPLOAD_DIR: /var/lib/maneko/uploads
+      COMIC_DIR: /var/lib/maneko/comics
+      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173","http://127.0.0.1:5173"]}'
     volumes:
-      - ./data/uploads:/app/uploads
-      - ./data/comics:/app/comics
-      - ./data/novels.db:/app/novels.db
+      - ./data:/var/lib/maneko
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -31,7 +33,3 @@ services:
       - "80:80"
     depends_on:
       - backend
-
-volumes:
-  uploads:
-  comics:

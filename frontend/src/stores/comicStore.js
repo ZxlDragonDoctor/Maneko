@@ -97,7 +97,7 @@ const useComicStore = create((set, get) => ({
       set((s) => ({
         generatingChapters: new Set([...s.generatingChapters].filter(id => id !== chapterId)),
       }))
-      get()._setChapter(chapterId, { status: 'error', images: [] })
+      get()._setChapter(chapterId, { status: 'error', images: [], error: error.message })
       throw error
     }
   },

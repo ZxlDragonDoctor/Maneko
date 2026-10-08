@@ -62,7 +62,7 @@ def test_generate_with_mock_and_force(tmp_path, monkeypatch):
         db.close()
 
 
-def test_recover_stuck_generating_from_disk(tmp_path, monkeypatch):
+def test_interrupted_generation_with_disk_panels_is_visible_as_error(tmp_path, monkeypatch):
     db, novel, chapter = _setup_db(tmp_path, monkeypatch)
     try:
         # simulate crash: files exist, status stuck
@@ -76,7 +76,7 @@ def test_recover_stuck_generating_from_disk(tmp_path, monkeypatch):
 
         service = ComicService(db)
         status = service.get_chapter_status(chapter.id)
-        assert status["status"] == "completed"
+        assert status["status"] == "error"
         assert status["images"] == [
             f"comics/{chapter.id}/panel_01.png",
             f"comics/{chapter.id}/panel_02.png",
@@ -87,7 +87,7 @@ def test_recover_stuck_generating_from_disk(tmp_path, monkeypatch):
         db.close()
 
 
-def test_do_not_recover_active_generating_with_progress(tmp_path, monkeypatch):
+def test_interrupted_generating_with_progress_keeps_panels_visible_as_error(tmp_path, monkeypatch):
     db, novel, chapter = _setup_db(tmp_path, monkeypatch)
     try:
         chapter_dir = tmp_path / "comics" / chapter.id
@@ -99,7 +99,7 @@ def test_do_not_recover_active_generating_with_progress(tmp_path, monkeypatch):
 
         service = ComicService(db)
         status = service.get_chapter_status(chapter.id)
-        assert status["status"] == "generating"
+        assert status["status"] == "error"
         assert len(status["images"]) == 1
     finally:
         db.close()

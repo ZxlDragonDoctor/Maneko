@@ -5,6 +5,19 @@ const api = axios.create({
   timeout: 60000,
 })
 
+export function formatApiError(error) {
+  const status = error?.response?.status
+  const detail = error?.response?.data?.detail
+  if (status === 413) return '文件超过服务器允许的大小上限，请缩小文件后重试。'
+  if (status === 502 || status === 503 || status === 504) {
+    return typeof detail === 'string' ? detail : '服务或 AI 提供方暂时不可用，请稍后重试。'
+  }
+  if (status >= 500) return '服务器暂时出错，请稍后重试；你的原始输入仍保留在当前页面。'
+  if (typeof detail === 'string' && detail.trim()) return detail
+  if (!error?.response) return '无法连接服务，请检查网络、API 地址和服务状态。'
+  return error?.message || '请求失败，请重试。'
+}
+
 api.interceptors.request.use(
   (config) => {
     return config
@@ -17,7 +30,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message)
+    error.userMessage = formatApiError(error)
+    error.message = error.userMessage
     return Promise.reject(error)
   }
 )
@@ -60,6 +74,7 @@ export const comicApi = {
     }),
   getStatus: (chapterId) => api.get(`/comics/${chapterId}/status`),
   getImages: (chapterId) => api.get(`/comics/${chapterId}/images`),
+  exportArchive: (chapterId) => api.get(`/comics/${chapterId}/export`, { responseType: 'blob' }),
   getStyles: () => api.get('/comics/styles'),
   detectStyle: ({ chapterId, novelId } = {}) =>
     api.post('/comics/detect-style', null, {

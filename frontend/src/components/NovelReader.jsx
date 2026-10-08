@@ -1,10 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react'
-import useComicStore from '../stores/comicStore'
 
-function NovelReader({ chapters = [], currentChapter, onChapterChange, novelContent = '', styleId = 'auto' }) {
+function NovelReader({ chapters = [], currentChapter, onChapterChange, novelContent = '' }) {
   const observerRef = useRef(null)
   const chapterRefs = useRef({})
-  const { chapterComics, generateComic } = useComicStore()
 
   const handleSelect = useCallback((chapter) => {
     onChapterChange?.(chapter)
@@ -19,13 +17,6 @@ function NovelReader({ chapters = [], currentChapter, onChapterChange, novelCont
             const chapter = chapters.find((ch) => ch.id === chapterId)
             if (chapter) {
               onChapterChange(chapter)
-              const comicStatus = chapterComics[chapterId]
-              if (
-                chapter.comic_status !== 'completed' &&
-                (!comicStatus || comicStatus.status === 'pending')
-              ) {
-                generateComic(chapterId, styleId)
-              }
             }
           }
         })
@@ -36,7 +27,7 @@ function NovelReader({ chapters = [], currentChapter, onChapterChange, novelCont
       if (ref) observerRef.current.observe(ref)
     })
     return () => observerRef.current?.disconnect()
-  }, [chapters, chapterComics, generateComic, onChapterChange, styleId])
+  }, [chapters, onChapterChange])
 
   const setChapterRef = useCallback((el, chapterId) => {
     chapterRefs.current[chapterId] = el
@@ -44,13 +35,13 @@ function NovelReader({ chapters = [], currentChapter, onChapterChange, novelCont
 
   return (
     <div className="h-full overflow-y-auto p-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#00f0ff] [text-shadow:0_0_10px_rgba(0,240,255,0.55)] mb-4 sticky top-0 bg-[#0a0a1a] py-2 z-10">
+      <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--color-accent)]  mb-4 sticky top-0 bg-[var(--color-surface)] py-2 z-10">
         小説 · 原文
       </h2>
 
       {chapters.length === 0 ? (
-        <div className="bg-[#12041e]/60 border border-[#ff1493]/25 rounded-sm p-4">
-          <div className="text-gray-300 text-sm whitespace-pre-wrap max-w-prose">
+        <div className="bg-[var(--color-surface-alt)]/60 border border-[var(--color-primary)] rounded-sm p-4">
+          <div className="text-[var(--color-text)] text-sm whitespace-pre-wrap max-w-prose">
             {novelContent || '暂无章节内容'}
           </div>
         </div>
@@ -69,17 +60,17 @@ function NovelReader({ chapters = [], currentChapter, onChapterChange, novelCont
                 handleSelect(chapter)
               }
             }}
-            className={`mb-4 p-4 rounded-sm cursor-pointer transition-all duration-300 bg-[#12041e]/50 ${
+            className={`mb-4 p-4 rounded-sm cursor-pointer transition-all duration-300 bg-[var(--color-surface-alt)]/50 ${
               currentChapter?.id === chapter.id
-                ? 'border-2 border-[#ff1493] shadow-[0_0_15px_rgba(255,20,147,0.3)]'
-                : 'border border-[#00f0ff]/20 hover:border-[#00f0ff]/45'
+                ? 'border-2 border-[var(--color-primary)] shadow-sm'
+                : 'border border-[var(--color-accent)] hover:border-[var(--color-accent)]'
             }`}
           >
             <h3 className="font-bold text-base md:text-lg mb-2">{chapter.title}</h3>
-            <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap max-w-prose">
+            <div className="text-[var(--color-text)] text-sm leading-relaxed whitespace-pre-wrap max-w-prose">
               {chapter.content}
             </div>
-            <div className="mt-3 text-[11px] text-gray-400 uppercase tracking-wider">
+            <div className="mt-3 text-[11px] text-[var(--color-muted)] uppercase tracking-wider">
               第 {chapter.chapter_number} 章
               {chapter.comic_status ? ` · ${chapter.comic_status}` : ''}
             </div>

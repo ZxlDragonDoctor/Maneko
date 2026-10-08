@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from pathlib import Path
 from typing import List, Union
@@ -7,6 +7,8 @@ import os
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     APP_NAME: str = "Maneko · 漫猫"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
@@ -58,7 +60,10 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors(cls, v):
         if isinstance(v, list):
-            return v
+            origins = [str(origin).strip() for origin in v if str(origin).strip()]
+            if any("*" in origin for origin in origins):
+                raise ValueError("CORS_ORIGINS must contain explicit origins; wildcard patterns are unsupported")
+            return origins
         if not v:
             return []
         s = str(v).strip()
@@ -66,13 +71,16 @@ class Settings(BaseSettings):
             try:
                 parsed = json.loads(s)
                 if isinstance(parsed, list):
-                    return [str(x) for x in parsed]
+                    origins = [str(x).strip() for x in parsed if str(x).strip()]
+                    if any("*" in origin for origin in origins):
+                        raise ValueError("CORS_ORIGINS must contain explicit origins; wildcard patterns are unsupported")
+                    return origins
             except json.JSONDecodeError:
                 pass
-        return [p.strip() for p in s.split(",") if p.strip()]
-
-    class Config:
-        env_file = ".env"
+        origins = [p.strip() for p in s.split(",") if p.strip()]
+        if any("*" in origin for origin in origins):
+            raise ValueError("CORS_ORIGINS must contain explicit origins; wildcard patterns are unsupported")
+        return origins
 
 
 settings = Settings()

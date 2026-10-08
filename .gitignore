@@ -38,6 +38,9 @@ mobile-native/www/
 mobile-native/android/app/build/
 mobile-native/android/.gradle/
 mobile-native/android/local.properties
+mobile-native/android/app/keystore.properties
+mobile-native/android/app/*.jks
+mobile-native/android/app/*.keystore
 *.keystore
 *.apk
 backend/uvicorn.*.log

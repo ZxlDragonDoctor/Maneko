@@ -7,8 +7,8 @@
     "sync": "cap sync android",
     "open": "cap open android",
     "android": "cap run android",
-    "apk:debug": "cd android && gradlew assembleDebug",
-    "apk:release": "cd android && gradlew assembleRelease",
+    "apk:debug": "powershell -ExecutionPolicy Bypass -File ../scripts/build-apk.ps1",
+    "apk:release": "powershell -ExecutionPolicy Bypass -File ../scripts/build-android-release.ps1",
     "build:www": "powershell -ExecutionPolicy Bypass -File ../scripts/build-apk-www.ps1"
   },
   "dependencies": {

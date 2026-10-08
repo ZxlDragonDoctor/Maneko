@@ -59,28 +59,109 @@
     try {
       if (store.state.demo) {
         store.loadLocalNovels();
+      } else if (!api.base()) {
+        store.state.novels = [];
+        store.state.error = '尚未连接服务。请在「我的」中设置 Maneko API 地址并测试连接。';
       } else {
-        const list = await api.listNovels();
+        const response = await api.listBooks({ sort: 'updated' });
+        const list = response.books || [];
         store.state.novels = list.map((n) => ({
           id: n.id,
           title: n.title,
           author: n.author || '未知',
           source: n.source || 'upload',
           tags: n.tags || [],
-          summary: '',
+          summary: n.summary || '',
           favorite: !!n.favorite,
           createdAt: n.created_at ? Date.parse(n.created_at) : Date.now(),
           status: n.status,
           progress: n.progress || 0,
+          category_id: n.category_id || '',
+          category_name: n.category_name || '',
         }));
+        store.state.favorites = Object.fromEntries(list.filter((n) => n.favorite).map((n) => [n.id, true]));
       }
-      store.state.error = null;
+      if (api.base() || store.state.demo) store.state.error = null;
     } catch (e) {
       store.state.error = e.message;
       toast('加载失败：' + e.message, 'err');
     }
     store.state.loading = false;
     render();
+  }
+
+  async function loadCategories() {
+    if (!api.base() || store.state.demo) return;
+    try {
+      const data = await api.categories();
+      store.state.categories = data.categories || [];
+    } catch (e) {
+      store.state.error = '分类加载失败：' + e.message;
+    }
+  }
+
+  async function loadSources() {
+    if (!api.base() || store.state.demo) {
+      store.state.sources = [];
+      return;
+    }
+    try {
+      const data = await api.sources();
+      store.state.sources = (data.sources || []).filter((source) => source.enabled !== false && source.id !== 'url');
+    } catch (e) {
+      store.state.sourceError = '书源暂时不可用：' + e.message;
+    }
+  }
+
+  async function searchLibrary(sourceId, query) {
+    if (!api.base() || store.state.demo) {
+      store.state.sourceError = '请先连接 Maneko 服务后搜索在线书源';
+      render();
+      return;
+    }
+    store.state.selectedSource = sourceId || 'all';
+    store.state.sourceQuery = query || '';
+    store.state.sourceLoading = true;
+    store.state.sourceError = null;
+    render();
+    try {
+      const data = store.state.selectedSource === 'all'
+        ? await api.searchAll(store.state.sourceQuery)
+        : await api.searchSource(store.state.selectedSource, store.state.sourceQuery);
+      store.state.sourceBooks = data.books || [];
+    } catch (e) {
+      store.state.sourceBooks = [];
+      store.state.sourceError = e.message || '书源搜索失败，请稍后重试';
+    } finally {
+      store.state.sourceLoading = false;
+      render();
+    }
+  }
+
+  async function loadChapters(novelId) {
+    if (!novelId || store.state.demo || !api.base()) return [];
+    const raw = await api.chapters(novelId);
+    const chapters = raw.map((c) => ({
+      id: c.id,
+      number: c.chapter_number,
+      title: c.title,
+      content: c.content,
+      comicStatus: c.comic_status,
+    }));
+    store.state.chaptersByNovel[novelId] = chapters;
+    return chapters;
+  }
+
+  async function loadAllComics() {
+    if (!api.base() || store.state.demo) return;
+    try {
+      await Promise.all(store.state.novels.map(async (novel) => {
+        const chapters = await loadChapters(novel.id);
+        await Promise.all(chapters.map((chapter) => ensureComic(chapter.id)));
+      }));
+    } catch (e) {
+      toast('漫画集加载失败：' + e.message, 'err');
+    }
   }
 
   async function loadStyles() {
@@ -109,14 +190,7 @@
         chapters = store.state.chaptersByNovel[id] || [];
       } else {
         novel = await api.getNovel(id);
-        const raw = await api.chapters(id);
-        chapters = raw.map((c) => ({
-          id: c.id,
-          number: c.chapter_number,
-          title: c.title,
-          content: c.content,
-          comicStatus: c.comic_status,
-        }));
+        chapters = await loadChapters(id);
       }
       store.state.route.params.novel = novel;
       store.state.route.params.chapters = chapters;
@@ -140,13 +214,18 @@
     }
     try {
       const st = await api.comicStatus(chapterId);
+      let images = st.images || [];
+      if (st.status === 'completed') {
+        const panels = await api.comicImages(chapterId);
+        if (panels.length) images = panels;
+      }
       store.setComic(chapterId, {
         status: st.status,
-        images: st.images || [],
+        images,
         styleId: store.state.prefs.defaultStyle,
       });
-    } catch (_) {
-      store.setComic(chapterId, { status: 'pending', images: [] });
+    } catch (e) {
+      store.setComic(chapterId, { status: 'error', images: [], error: e.message });
     }
     return store.state.comicByChapter[chapterId];
   }
@@ -201,18 +280,27 @@
       n += 1;
       try {
         const st = await api.comicStatus(chapterId);
+        let images = st.images || [];
+        if (st.status === 'completed') {
+          const panels = await api.comicImages(chapterId);
+          if (panels.length) images = panels;
+        }
         store.setComic(chapterId, {
           status: st.status,
-          images: st.images || [],
+          images,
           styleId: store.state.prefs.defaultStyle,
         });
         render();
-        if (st.status === 'generating' && n < 180) {
+        if (['pending', 'generating'].includes(st.status) && n < 180) {
           store.state.pollTimers[chapterId] = setTimeout(tick, 2000);
         } else {
           delete store.state.generating[chapterId];
           if (st.status === 'completed') toast('漫画生成完成', 'ok');
           if (st.status === 'error') toast('生成失败', 'err');
+          if (['pending', 'generating'].includes(st.status)) {
+            store.setComic(chapterId, { status: 'error', error: '生成等待超时，请重试' });
+            toast('生成等待超时，请重试', 'err');
+          }
           render();
         }
       } catch (e) {
@@ -238,16 +326,18 @@
       }, chapters);
       toast('已导入本地书架', 'ok');
       go('home');
-      loadNovels();
-      return;
+      await loadNovels();
+      return true;
     }
     try {
       await api.uploadText(t, text);
-      toast('上传成功，正在分章…', 'ok');
+      toast('小说已上传，章节已准备就绪', 'ok');
       go('home');
       await loadNovels();
+      return true;
     } catch (e) {
       toast(e.message, 'err');
+      return false;
     }
   }
 
@@ -259,6 +349,16 @@
     }
     window.scrollTo(0, 0);
     render();
+    if (name === 'library') {
+      Promise.all([loadSources(), loadCategories()]).then(render);
+    } else if (name === 'studio') {
+      const novelId = store.state.route.params.studioNovelId || (store.state.novels[0] && store.state.novels[0].id);
+      if (novelId && !store.state.chaptersByNovel[novelId]) {
+        loadChapters(novelId).then(render).catch((e) => toast('章节加载失败：' + e.message, 'err'));
+      }
+    } else if (name === 'comics') {
+      loadAllComics().then(render);
+    }
   }
 
   function syncNav() {
@@ -282,7 +382,7 @@
       '<div class="step"><b>03 生成分镜</b><span>一键生成可预览的日漫风章节漫画。</span></div>' +
       '</div>' +
       '<button class="btn btn-primary" id="obDone">开始使用</button>' +
-      '<p class="muted" style="text-align:center;margin-top:12px">离线可先体验演示；可在「我」连接后端</p>' +
+      '<p class="muted" style="text-align:center;margin-top:12px">连接 Maneko 服务后即可使用完整书库与漫画生成功能。</p>' +
       '</div>'
     );
   }
@@ -313,7 +413,9 @@
     const q = (store.state.search || '').trim().toLowerCase();
     const tag = store.state.filterTag;
     if (tag === '收藏') list = list.filter((n) => store.state.favorites[n.id]);
-    else if (tag && tag !== '全部') list = list.filter((n) => (n.tags || []).indexOf(tag) >= 0);
+    else if (tag && tag !== '全部') list = list.filter((n) =>
+      (n.tags || []).indexOf(tag) >= 0 || n.category_name === tag
+    );
     if (q) {
       list = list.filter((n) =>
         (n.title || '').toLowerCase().indexOf(q) >= 0 ||
@@ -326,7 +428,7 @@
 
   function viewHome() {
     const list = filteredNovels();
-    const tags = ['全部', '收藏', '修仙', '武侠', '科幻', '悬疑', '导入', 'demo'];
+    const tags = ['全部', '收藏', ...store.state.categories.map((c) => c.name), '修仙', '武侠', '科幻', '悬疑', '导入'];
     const favCount = Object.keys(store.state.favorites).length;
     return (
       '<div class="banner">' +
@@ -342,6 +444,10 @@
       tags.map((t) => '<button class="filter-chip' + (store.state.filterTag === t ? ' active' : '') + '" data-tag="' + esc(t) + '">' + esc(t) + '</button>').join('') +
       '</div>' +
       '<div class="section-title"><h2>我的<span class="accent">书架</span></h2><span class="side">' + list.length + ' books</span></div>' +
+      (!store.state.apiBase && !store.state.demo
+        ? '<div class="notice" role="status">服务尚未连接。<button class="text-link" data-go-me="1">设置服务地址</button> 后即可同步书架、搜索公版书并生成漫画。</div>'
+        : '') +
+      (store.state.error ? '<div class="notice error" role="alert">' + esc(store.state.error) + '</div>' : '') +
       (store.state.loading ? skeleton(3) : '') +
       (!store.state.loading && !list.length ? '<div class="empty"><strong>没有匹配的作品</strong>换个关键词，或从「导入」添加小说</div>' : '') +
       list.map(novelCard).join('') +
@@ -349,7 +455,7 @@
       '<div class="stats">' +
       '<div class="stat"><b>' + store.state.novels.length + '</b><span>作品</span></div>' +
       '<div class="stat"><b>' + favCount + '</b><span>收藏</span></div>' +
-      '<div class="stat"><b>' + (store.state.demo ? 'D' : 'L') + '</b><span>模式</span></div>' +
+      '<div class="stat"><b>' + (store.state.apiBase && !store.state.demo ? '在线' : '未连接') + '</b><span>服务</span></div>' +
       '</div>'
     );
   }
@@ -371,8 +477,20 @@
     } else if (comic.status === 'generating' && !(comic.images || []).length) {
       comicHtml = loader('正在生成分镜');
     } else if (comic.status === 'error') {
+      const images = comic.images || [];
       comicHtml =
-        '<div class="empty"><strong>生成失败</strong>可更换风格后重试</div>' +
+        '<div class="notice error" role="alert"><strong>生成未完整完成</strong>' +
+        esc(comic.error || (images.length ? '本次生成未完成，当前有 ' + images.length + ' 格可用，可先导出或重试。' : '请检查服务状态后重试。')) + '</div>' +
+        (images.length
+          ? '<div class="panel-grid">' + images.map((img, i) => {
+            const idx = typeof img === 'string'
+              ? Number((img.match(/panel_(\d+)/) || [])[1] || i + 1)
+              : (img.panel_index || i + 1);
+            const imagePath = typeof img === 'object' && img ? img.image_path : img;
+            return '<div class="panel"><img src="' + esc(panelUrl(chapter.id, idx, imagePath)) + '" alt="第 ' + idx + ' 幕分镜" loading="lazy"/><div class="cap">第 ' + idx + ' 幕 · 部分结果</div></div>';
+          }).join('') + '</div>' +
+          '<button class="btn btn-ghost" data-export-comic="' + esc(chapter.id) + '">导出已生成画格 ZIP</button>'
+          : '') +
         '<button class="btn btn-orange" data-gen="1" data-force="1">重试</button>';
     } else {
       const images = comic.images || [];
@@ -383,8 +501,9 @@
             const idx = typeof img === 'string'
               ? Number((img.match(/panel_(\d+)/) || [])[1] || i + 1)
               : (img.panel_index || i + 1);
+            const imagePath = typeof img === 'object' && img ? img.image_path : img;
             return (
-              '<div class="panel"><img src="' + panelUrl(chapter.id, idx) + '" alt="p' + idx + '" loading="lazy"/>' +
+              '<div class="panel"><img src="' + esc(panelUrl(chapter.id, idx, imagePath)) + '" alt="第 ' + idx + ' 幕分镜" loading="lazy"/>' +
               '<div class="cap">第 ' + idx + ' 幕</div></div>'
             );
           }).join('') +
@@ -392,6 +511,7 @@
           (comic.status === 'generating'
             ? '<p class="muted" style="margin-bottom:10px">生成中…已出 ' + images.length + ' 格</p>'
             : '') +
+          (comic.status === 'completed' ? '<button class="btn btn-ghost" data-export-comic="' + esc(chapter.id) + '">下载本章分镜 ZIP</button>' : '') +
           '<button class="btn btn-ghost" data-gen="1" data-force="1">按「' + esc(styleLabel(styleId)) + '」重新生成</button>';
       } else {
         comicHtml =
@@ -406,7 +526,12 @@
       '<div class="meta"><h3 style="margin:0">' + esc(novel.title) + '</h3>' +
       '<p>' + esc(novel.author || '') + '</p></div>' +
       '<button class="icon-btn" id="btnFav" aria-label="收藏">' + (fav ? '♥' : '♡') + '</button>' +
+      '<button class="btn btn-danger btn-sm" id="btnDeleteNovel">删除</button>' +
       '</div>' +
+
+      (!store.state.demo && store.state.categories.length
+        ? '<div class="field"><label for="novelCategory">分类</label><select id="novelCategory"><option value="">未分类</option>' + store.state.categories.map((c) => '<option value="' + esc(c.id) + '"' + (novel.category_id === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></div>'
+        : '') +
 
       '<div class="reader-toolbar">' +
       '<div class="seg" id="fontSeg">' +
@@ -438,29 +563,28 @@
   }
 
   function viewLibrary() {
-    const sources = [
-      { id: 'upload', ico: '📁', name: '本地导入', desc: 'TXT / 粘贴正文，离线可用' },
-      { id: 'builtin', ico: '⭐', name: '演示佳作', desc: '4 本示例，含分镜演示' },
-      { id: 'gutenberg', ico: '🏛', name: 'Gutenberg', desc: '公版书库（需连接后端）' },
-    ];
+    const sources = store.state.sources;
     return (
       '<div class="hero">' +
-      '<h2>書庫 · <span class="cyan">书源</span></h2>' +
-      '<p>从本地或公版书源导入作品。演示模式完全离线可用。</p>' +
+      '<h2>书库与<span class="cyan">书源</span></h2>' +
+      '<p>搜索可导入的公版小说，或上传你拥有使用权的 TXT / Markdown 文件。</p>' +
       '<button class="btn btn-primary" id="btnLibImport">导入小说</button>' +
       '</div>' +
-      sources.map((s, i) => (
-        '<div class="card ' + (i === 1 ? 'cyan' : i === 2 ? 'orange' : '') + '" data-source="' + s.id + '">' +
-        '<div class="list-row" style="border:none;padding:0">' +
-        '<div class="ico">' + s.ico + '</div>' +
-        '<div class="meta"><h4>' + s.name + '</h4><p>' + s.desc + '</p></div>' +
-        '<div class="chev">›</div></div></div>'
-      )).join('') +
-      '<div class="section-title" style="margin-top:8px"><h2>快捷</h2></div>' +
-      '<div class="btn-row">' +
-      '<button class="btn btn-ghost" id="btnGoStudio">去生成</button>' +
-      '<button class="btn btn-ghost" id="btnRefresh">刷新书架</button>' +
-      '</div>'
+      (!api.base() && !store.state.demo ? '<div class="notice error" role="alert">请先在「我的」中设置并测试服务地址，在线书源需要连接后端。</div>' : '') +
+      '<div class="field"><label for="sourceSelect">书源</label><select id="sourceSelect"><option value="all"' + (store.state.selectedSource === 'all' ? ' selected' : '') + '>全部书源</option>' +
+      sources.map((s) => '<option value="' + esc(s.id) + '"' + (store.state.selectedSource === s.id ? ' selected' : '') + '>' + esc(s.name) + ' · ' + esc(s.description || '') + '</option>').join('') +
+      '</select></div>' +
+      '<div class="search-bar"><input id="sourceQuery" value="' + esc(store.state.sourceQuery) + '" placeholder="搜索公版小说标题或作者" aria-label="搜索书源"/><button class="btn btn-primary btn-sm" id="btnSearchSource">搜索</button></div>' +
+      (store.state.sourceError ? '<div class="notice error" role="alert">' + esc(store.state.sourceError) + '</div>' : '') +
+      (store.state.sourceLoading ? loader('正在搜索书源') : '') +
+      (store.state.sourceBooks.map((book, index) => '<div class="card"><div class="meta"><h3>' + esc(book.title) + '</h3><p>' + esc(book.author || '作者未知') + ' · ' + esc(book.source) + '</p>' + (book.summary ? '<div class="desc">' + esc(book.summary) + '</div>' : '') + (!book.importable ? '<p class="notice">该条目仅提供书目信息，全文需由你上传正版文件。</p>' : '<button class="btn btn-ghost btn-sm" data-import-book="' + index + '">导入全文</button>') + '</div></div>').join('') || (!store.state.sourceLoading ? '<div class="empty"><strong>暂无搜索结果</strong>选择书源并输入关键词进行搜索</div>' : '')) +
+      '<div class="section-title" style="margin-top:20px"><h2>链接导入</h2></div>' +
+      '<div class="field"><label for="sourceUrl">TXT / Markdown 直链</label><input id="sourceUrl" type="url" placeholder="https://example.com/novel.txt"/></div>' +
+      '<button class="btn btn-ghost" id="btnImportUrl">从链接导入</button>' +
+      '<div class="section-title" style="margin-top:20px"><h2>分类管理</h2></div>' +
+      '<div class="search-bar"><input id="categoryName" maxlength="40" placeholder="新分类名称" aria-label="新分类名称"/><button class="btn btn-ghost btn-sm" id="btnCreateCategory">添加</button></div>' +
+      '<div class="chips-scroll">' + store.state.categories.map((c) => '<span class="badge">' + esc(c.name) + '</span><button class="text-link" data-delete-category="' + esc(c.id) + '" aria-label="删除分类 ' + esc(c.name) + '">删除</button>').join('') + '</div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="btnGoStudio">去生成</button><button class="btn btn-ghost" id="btnRefresh">刷新书架</button></div>'
     );
   }
 
@@ -490,7 +614,7 @@
       '<select id="selChapter">' +
       (chapters.length
         ? chapters.map((c) => '<option value="' + esc(c.id) + '"' + (c.id === chapterId ? ' selected' : '') + '>' + esc(c.number + ' · ' + c.title) + '</option>').join('')
-        : '<option value="">（请先在演示书架导入，或连接后端）</option>') +
+        : '<option value="">请先导入小说并确保其章节已加载</option>') +
       '</select></div>' +
 
       '<div class="section-title"><h2>画风</h2><span class="side">' + esc(styleLabel(styleId)) + '</span></div>' +
@@ -510,7 +634,8 @@
         '<div class="panel-grid">' +
         (comic.images || []).map((img, i) => {
           const idx = typeof img === 'string' ? Number((img.match(/panel_(\d+)/) || [])[1] || i + 1) : (img.panel_index || i + 1);
-          return '<div class="panel"><img src="' + panelUrl(chapterId, idx) + '" alt=""/><div class="cap">P' + idx + '</div></div>';
+          const imagePath = typeof img === 'object' && img ? img.image_path : img;
+          return '<div class="panel"><img src="' + esc(panelUrl(chapterId, idx, imagePath)) + '" alt="第 ' + idx + ' 幕分镜"/><div class="cap">P' + idx + '</div></div>';
         }).join('') +
         '</div>'
       ) : chapterId ? '<div class="empty" style="margin-top:12px">尚未生成，点上方按钮开始</div>' : '')
@@ -562,9 +687,10 @@
           '<div class="panel-grid">' +
           images.slice(0, 4).map((img, i) => {
             const idx = typeof img === 'string' ? Number((img.match(/panel_(\d+)/) || [])[1] || i + 1) : (img.panel_index || i + 1);
-            return '<div class="panel"><img src="' + panelUrl(item.chapterId, idx) + '" alt="" loading="lazy"/><div class="cap">P' + idx + '</div></div>';
+            const imagePath = typeof img === 'object' && img ? img.image_path : img;
+            return '<div class="panel"><img src="' + esc(panelUrl(item.chapterId, idx, imagePath)) + '" alt="第 ' + idx + ' 幕分镜" loading="lazy"/><div class="cap">P' + idx + '</div></div>';
           }).join('') +
-          '</div></div>'
+          '</div><button class="btn btn-ghost btn-sm" data-export-comic="' + esc(item.chapterId) + '">下载本章分镜 ZIP</button></div>'
         );
       }).join('')
     );
@@ -575,22 +701,21 @@
     return (
       '<div class="hero">' +
       '<h2>Maneko<span class="cyan"> · 漫猫</span></h2>' +
-      '<p>ネオン東京 · ねこ看板娘<br/>Novel in, panels out.</p>' +
+      '<p>小说阅读与漫画创作<br/>Novel in, panels out.</p>' +
       '<div class="stats">' +
       '<div class="stat"><b>' + n.novels.length + '</b><span>作品</span></div>' +
-      '<div class="stat"><b>' + (n.demo ? 'DEMO' : 'LIVE') + '</b><span>模式</span></div>' +
+      '<div class="stat"><b>' + (n.apiBase && !n.demo ? '在线' : '未连接') + '</b><span>服务</span></div>' +
       '<div class="stat"><b>MIT</b><span>协议</span></div>' +
       '</div></div>' +
 
       '<div class="card">' +
       '<div class="section-title"><h2>连接后端</h2></div>' +
       '<div class="field"><label>API Base URL</label>' +
-      '<input id="apiBase" placeholder="https://maneko-api.onrender.com" value="' + esc(n.apiBase) + '" /></div>' +
+      '<input id="apiBase" type="url" placeholder="https://api.example.com" value="' + esc(n.apiBase) + '"' + (M.PROD_API && M.DEMO_ALLOWED === false ? ' readonly' : '') + ' /></div>' +
       '<div class="btn-row">' +
-      '<button class="btn btn-ghost" id="btnDemoOn">演示模式</button>' +
       '<button class="btn btn-primary" id="btnConnect">连接并同步</button>' +
       '</div>' +
-      '<p class="muted" style="margin-top:10px">演示模式：本地书架 + 模拟分镜。连接后端后可真实上传、AI 分章、DashScope 出图。</p>' +
+      '<p class="muted" style="margin-top:10px">连接后使用服务端书架、书源、章节与真实漫画生成任务。生成能力由部署方配置的 AI 服务提供。</p>' +
       '</div>' +
 
       '<div class="card cyan">' +
@@ -610,9 +735,9 @@
       '<div class="card">' +
       '<div class="section-title"><h2>关于</h2></div>' +
       '<p class="muted" style="margin:0;line-height:1.65">' +
-      'Maneko 是基于 AgentScope 的 AI 小说→日漫分镜应用。<br/>' +
-      'Web / Android 共用 Neon Tokyo 视觉与同一套 API。<br/>' +
-      'License: MIT · Maneko Contributors' +
+      'Maneko 是 AI 小说到漫画分镜创作工具。<br/>' +
+      '小说正文和生成提示会由当前服务配置的模型处理。<br/>' +
+      '<a class="text-link" href="privacy.html" target="_blank" rel="noreferrer">隐私说明</a> · License: MIT' +
       '</p></div>'
     );
   }
@@ -633,11 +758,33 @@
     $$('[data-tag]').forEach((el) => {
       el.onclick = () => { store.state.filterTag = el.dataset.tag; render(); };
     });
+    $$('[data-go-me]').forEach((el) => { el.onclick = () => go('me'); });
+    $$('[data-export-comic]').forEach((button) => {
+      button.onclick = async () => {
+        button.disabled = true;
+        const original = button.textContent;
+        button.textContent = '正在打包…';
+        try {
+          const blob = await api.exportComic(button.dataset.exportComic);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'maneko-comic.zip';
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          toast('分镜已导出', 'ok');
+        } catch (error) {
+          toast(error.message || '分镜导出失败，请重试', 'err');
+        } finally {
+          button.disabled = false;
+          button.textContent = original;
+        }
+      };
+    });
     const q = $('#q');
     if (q) {
       q.oninput = () => {
         store.state.search = q.value;
-        const listWrap = $('#view');
         // lightweight re-render
         render();
         const q2 = $('#q');
@@ -649,19 +796,134 @@
     const btnLibImport = $('#btnLibImport');
     if (btnLibImport) btnLibImport.onclick = openImportSheet;
 
+    const btnSearchSource = $('#btnSearchSource');
+    if (btnSearchSource) btnSearchSource.onclick = () => searchLibrary($('#sourceSelect').value, $('#sourceQuery').value.trim());
+    const sourceQuery = $('#sourceQuery');
+    if (sourceQuery) sourceQuery.onkeydown = (event) => {
+      if (event.key === 'Enter') searchLibrary($('#sourceSelect').value, sourceQuery.value.trim());
+    };
+    const sourceSelect = $('#sourceSelect');
+    if (sourceSelect) sourceSelect.onchange = () => { store.state.selectedSource = sourceSelect.value; };
+
+    $$('[data-import-book]').forEach((el) => {
+      el.onclick = async () => {
+        const book = store.state.sourceBooks[Number(el.dataset.importBook)];
+        if (!book || !book.importable) return;
+        el.disabled = true;
+        el.textContent = '正在导入…';
+        try {
+          const result = await api.importSearch({
+            source: book.source,
+            source_ref: book.source_ref,
+            download_url: book.download_url,
+            title: book.title,
+            author: book.author || '',
+            summary: book.summary || '',
+            cover_url: book.cover_url || '',
+            tags: book.tags || [],
+          });
+          await loadNovels();
+          toast('《' + (result.book?.title || book.title) + '》已加入书架', 'ok');
+          go('home');
+        } catch (e) {
+          toast('导入失败：' + e.message, 'err');
+          el.disabled = false;
+          el.textContent = '导入全文';
+        }
+      };
+    });
+
+    const btnImportUrl = $('#btnImportUrl');
+    if (btnImportUrl) btnImportUrl.onclick = async () => {
+      const url = ($('#sourceUrl').value || '').trim();
+      if (!url) return toast('请填写小说 TXT / Markdown 链接', 'err');
+      btnImportUrl.disabled = true;
+      try {
+        const response = await api.importUrl({ url });
+        await loadNovels();
+        toast('《' + response.book.title + '》已导入', 'ok');
+        go('home');
+      } catch (e) {
+        toast('链接导入失败：' + e.message, 'err');
+        btnImportUrl.disabled = false;
+      }
+    };
+
+    const btnCreateCategory = $('#btnCreateCategory');
+    if (btnCreateCategory) btnCreateCategory.onclick = async () => {
+      const input = $('#categoryName');
+      const name = input.value.trim();
+      if (!name) return toast('请输入分类名称', 'err');
+      try {
+        await api.createCategory(name);
+        await loadCategories();
+        render();
+        toast('分类已添加', 'ok');
+      } catch (e) { toast('添加分类失败：' + e.message, 'err'); }
+    };
+    $$('[data-delete-category]').forEach((el) => {
+      el.onclick = async () => {
+        if (!window.confirm('删除该分类？作品会保留在书架中。')) return;
+        try {
+          await api.deleteCategory(el.dataset.deleteCategory);
+          await loadCategories();
+          await loadNovels();
+          render();
+          toast('分类已删除', 'ok');
+        } catch (e) { toast('删除分类失败：' + e.message, 'err'); }
+      };
+    });
+
     const btnBack = $('#btnBack');
     if (btnBack) btnBack.onclick = () => { go('home'); loadNovels(); };
 
     const btnFav = $('#btnFav');
     if (btnFav) {
-      btnFav.onclick = () => {
+      btnFav.onclick = async () => {
         const novel = store.state.route.params.novel;
         if (!novel) return;
-        const on = store.toggleFavorite(novel.id);
-        toast(on ? '已收藏' : '已取消收藏', 'ok');
-        render();
+        const on = !store.state.favorites[novel.id];
+        try {
+          if (!store.state.demo) await api.updateBook(novel.id, { favorite: on });
+          if (on) store.state.favorites[novel.id] = true;
+          else delete store.state.favorites[novel.id];
+          localStorage.setItem(M.KEYS.favorites, JSON.stringify(store.state.favorites));
+          novel.favorite = on;
+          toast(on ? '已收藏并同步' : '已取消收藏并同步', 'ok');
+          render();
+        } catch (e) { toast('收藏未保存：' + e.message, 'err'); }
       };
     }
+
+    const btnDeleteNovel = $('#btnDeleteNovel');
+    if (btnDeleteNovel) btnDeleteNovel.onclick = async () => {
+      const novel = store.state.route.params.novel;
+      if (!novel || !window.confirm(`确定删除《${novel.title}》及其漫画吗？此操作不可撤销。`)) return;
+      try {
+        if (!store.state.demo) await api.deleteNovel(novel.id);
+        store.removeNovel(novel.id);
+        store.state.route.params.novel = null;
+        toast('作品已删除', 'ok');
+        go('home');
+        await loadNovels();
+      } catch (e) { toast('删除失败：' + e.message, 'err'); }
+    };
+
+    const novelCategory = $('#novelCategory');
+    if (novelCategory) novelCategory.onchange = async () => {
+      const novel = store.state.route.params.novel;
+      if (!novel) return;
+      try {
+        const categoryId = novelCategory.value;
+        const updated = await api.updateBook(novel.id, { category_id: categoryId || null, clear_category: !categoryId });
+        novel.category_id = updated.category_id || '';
+        novel.category_name = updated.category_name || '';
+        store.state.novels = store.state.novels.map((item) => item.id === novel.id
+          ? Object.assign({}, item, { category_id: novel.category_id, category_name: novel.category_name })
+          : item);
+        toast('分类已保存', 'ok');
+      } catch (e) { toast('分类保存失败：' + e.message, 'err'); render(); }
+    };
 
     $$('[data-ch]').forEach((el) => {
       el.onclick = async () => {
@@ -671,7 +933,11 @@
         const idx = chapters.findIndex((c) => c.id === id);
         const novelId = store.state.route.params.novel && store.state.route.params.novel.id;
         if (novelId && idx >= 0 && chapters.length) {
-          M.store.setProgress(novelId, idx / chapters.length);
+          const ratio = chapters.length > 1 ? idx / (chapters.length - 1) : 1;
+          M.store.setProgress(novelId, ratio);
+          if (!store.state.demo) {
+            api.updateBook(novelId, { progress: ratio }).catch((e) => toast('阅读进度未同步：' + e.message, 'err'));
+          }
         }
         await ensureComic(id);
         render();
@@ -720,11 +986,7 @@
         store.state.route.params.studioChapterId = null;
         if (!store.state.demo) {
           try {
-            const raw = await api.chapters(id);
-            store.state.chaptersByNovel[id] = raw.map((c) => ({
-              id: c.id, number: c.chapter_number, title: c.title,
-              content: c.content, comicStatus: c.comic_status,
-            }));
+            await loadChapters(id);
           } catch (e) { toast(e.message, 'err'); }
         }
         render();
@@ -755,28 +1017,19 @@
     }
 
     // me
-    const btnDemoOn = $('#btnDemoOn');
-    if (btnDemoOn) btnDemoOn.onclick = () => {
-      store.setDemo(true, '');
-      toast('已切换演示模式', 'ok');
-      loadNovels();
-    };
     const btnConnect = $('#btnConnect');
     if (btnConnect) btnConnect.onclick = async () => {
       const base = ($('#apiBase').value || '').trim().replace(/\/$/, '');
-      if (!base) {
-        store.setDemo(true, '');
-        toast('未填地址，保持演示模式');
-        return;
-      }
-      store.setDemo(false, base);
+      if (!base) return toast('请先填写 Maneko 服务地址', 'err');
+      if (!/^https?:\/\//i.test(base)) return toast('服务地址必须以 http:// 或 https:// 开头', 'err');
+      if (!store.setDemo(false, base)) return toast('此发布版本的服务地址由构建配置锁定', 'err');
       try {
         await api.health();
         toast('连接成功', 'ok');
         await loadStyles();
+        await Promise.all([loadCategories(), loadSources()]);
         await loadNovels();
       } catch (e) {
-        store.setDemo(true, base);
         toast('无法连接后端：' + e.message, 'err');
       }
     };
@@ -784,20 +1037,43 @@
     if (defStyle) defStyle.onchange = () => M.store.setPrefs({ defaultStyle: defStyle.value });
 
     const btnExport = $('#btnExport');
-    if (btnExport) btnExport.onclick = () => {
-      const data = {
-        novels: store.state.novels,
-        chapters: store.state.chaptersByNovel,
-        favorites: store.state.favorites,
-        progress: store.state.progress,
-        exportedAt: new Date().toISOString(),
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'maneko-shelf.json';
-      a.click();
-      toast('已导出', 'ok');
+    if (btnExport) btnExport.onclick = async () => {
+      btnExport.disabled = true;
+      const original = btnExport.textContent;
+      btnExport.textContent = '正在准备完整书库…';
+      try {
+        let novels = store.state.novels;
+        let chapters = store.state.chaptersByNovel;
+        if (!store.state.demo) {
+          if (!api.base()) throw new Error('请先连接服务端，才能导出完整书库正文');
+          novels = await Promise.all(store.state.novels.map(async (item) => {
+            const [detail, chapterList] = await Promise.all([api.getNovel(item.id), api.chapters(item.id)]);
+            chapters[item.id] = chapterList;
+            return detail;
+          }));
+        }
+        const data = {
+          novels,
+          chapters,
+          favorites: store.state.favorites,
+          progress: store.state.progress,
+          categories: store.state.categories,
+          exportedAt: new Date().toISOString(),
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'maneko-shelf.json';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('完整书库已导出', 'ok');
+      } catch (error) {
+        toast(error.message || '书库导出失败', 'err');
+      } finally {
+        btnExport.disabled = false;
+        btnExport.textContent = original;
+      }
     };
     const btnReset = $('#btnReset');
     if (btnReset) btnReset.onclick = () => {
@@ -839,12 +1115,19 @@
       $('#impText').value = text;
       $('#impTitle').value = f.name.replace(/\.(txt|md|markdown)$/i, '');
     };
-    $('#impGo').onclick = () => {
+    $('#impGo').onclick = async () => {
       const title = $('#impTitle').value.trim();
       const text = $('#impText').value.trim();
       if (!text) return toast('请粘贴或选择正文', 'err');
-      closeSheet();
-      importNovel(title, text);
+      const button = $('#impGo');
+      button.disabled = true;
+      button.textContent = '正在上传并分章…';
+      const imported = await importNovel(title, text);
+      if (imported) closeSheet();
+      else {
+        button.disabled = false;
+        button.textContent = '重试导入';
+      }
     };
   }
 
@@ -908,7 +1191,7 @@
     tickClock();
     setInterval(tickClock, 30000);
     await loadStyles();
-    if (store.state.demo) {
+    if (store.state.demo && M.DEMO_ALLOWED) {
       store.loadLocalNovels();
       // pre-seed completed comic markers
       Object.keys(store.state.chaptersByNovel).forEach((nid) => {
@@ -917,6 +1200,7 @@
         });
       });
     }
+    await Promise.all([loadCategories(), loadSources()]);
     await loadNovels();
     render();
   }

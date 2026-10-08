@@ -35,7 +35,7 @@ function StylePicker({ value, onChange, onDetect, detectLoading }) {
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <label className="text-[11px] font-bold uppercase tracking-widest text-[#00f0ff]">
+        <label className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-accent)]">
           漫画风格 · ジャンル
         </label>
         {onDetect && (
@@ -43,7 +43,7 @@ function StylePicker({ value, onChange, onDetect, detectLoading }) {
             type="button"
             onClick={onDetect}
             disabled={detectLoading}
-            className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-sm text-[#ff6b00] border border-[#ff6b00]/50 transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,107,0,0.4)] disabled:opacity-40"
+            className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-sm text-[var(--color-warning)] border border-[var(--color-warning)] transition-all duration-300 hover:shadow-sm disabled:opacity-40"
           >
             {detectLoading ? '识别中…' : '智能识别'}
           </button>
@@ -62,8 +62,8 @@ function StylePicker({ value, onChange, onDetect, detectLoading }) {
               onClick={() => onChange?.(s.id)}
               className={`px-3 py-1.5 text-[11px] font-bold rounded-sm transition-all duration-300 border ${
                 active
-                  ? 'bg-[#ff1493] text-[#0a0a1a] border-[#ff1493] shadow-[0_0_12px_rgba(255,20,147,0.55)]'
-                  : 'text-gray-300 border-[#00f0ff]/25 hover:border-[#00f0ff] hover:text-[#00f0ff]'
+                  ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] border-[var(--color-primary)] shadow-sm'
+                  : 'text-[var(--color-text)] border-[var(--color-accent)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
               }`}
             >
               {s.label}

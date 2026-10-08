@@ -16,7 +16,7 @@ router = APIRouter()
 
 class CategoryCreate(BaseModel):
     name: str
-    color: str = "#ff1493"
+    color: str = "#80535d"
 
 
 class CategoryUpdate(BaseModel):

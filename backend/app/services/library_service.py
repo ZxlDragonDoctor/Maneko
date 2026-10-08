@@ -60,14 +60,14 @@ class LibraryService:
             .all()
         )
 
-    def create_category(self, name: str, color: str = "#ff1493") -> Category:
+    def create_category(self, name: str, color: str = "#80535d") -> Category:
         name = (name or "").strip()
         if not name:
             raise ValueError("分类名不能为空")
         exists = self.db.query(Category).filter(Category.name == name).first()
         if exists:
             raise ValueError("分类已存在")
-        cat = Category(name=name, color=color or "#ff1493")
+        cat = Category(name=name, color=color or "#80535d")
         self.db.add(cat)
         self.db.commit()
         self.db.refresh(cat)
@@ -101,11 +101,11 @@ class LibraryService:
         if self.db.query(Category).count() > 0:
             return
         defaults = [
-            ("修仙", "#bc13fe"),
-            ("科幻", "#00f0ff"),
-            ("悬疑", "#ff6b00"),
-            ("言情", "#ff1493"),
-            ("日常", "#9ca3af"),
+            ("修仙", "#80535d"),
+            ("科幻", "#32675f"),
+            ("悬疑", "#875b2e"),
+            ("言情", "#a33e42"),
+            ("日常", "#596259"),
         ]
         for i, (name, color) in enumerate(defaults):
             self.db.add(Category(name=name, color=color, sort_order=i))

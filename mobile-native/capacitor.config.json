@@ -2,9 +2,9 @@
   "appId": "com.maneko.app",
   "appName": "Maneko",
   "webDir": "www",
-  "backgroundColor": "#0a0a1a",
+  "backgroundColor": "#f4f2ed",
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false,
     "useLegacyBridge": false
@@ -12,11 +12,11 @@
   "plugins": {
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#0a0a1a"
+      "backgroundColor": "#f4f2ed"
     }
   },
   "server": {
     "androidScheme": "https",
-    "cleartext": true
+    "cleartext": false
   }
 }

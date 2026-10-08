@@ -199,24 +199,26 @@ cd backend
 python -m pytest tests/ -v
 ```
 
-## 发布（免费方案）
+## 发布准备
 
 | 用途 | 平台 | 位置 |
 |------|------|------|
 | Web 前端 | **Vercel** Free | Root = `frontend`，`vercel.json` 反代 `/api` |
 | 移动 App（PWA/APK 源码） | **Vercel** Free | Root = `maneko-app` |
-| 后端 API | **Render** Free（Docker） | 根目录 `Dockerfile.backend` + `render.yaml` |
+| 后端 API | **Render**（Docker + 持久盘，需付费实例） | 根目录 `Dockerfile.backend` + `render.yaml` |
 | 安卓 APK | **Capacitor** | `mobile-native/`，一键 `scripts/build-apk.ps1` |
 
 完整步骤（含环境变量、CORS、签名）：**[docs/RELEASE.md](docs/RELEASE.md)**
+隐私说明与商店条目草案：[docs/PRIVACY.md](docs/PRIVACY.md)、[docs/STORE_LISTING.md](docs/STORE_LISTING.md)。Android 发布需 API 36 SDK、就绪的真实模型服务、公开隐私 URL 和签名密钥。
 
 ```powershell
-# 同步生产 App 到 Capacitor 并打调试 APK
-.\scripts\build-apk-www.ps1
+# 调试包：App 内可手动设置测试服务
 .\scripts\build-apk.ps1
 
-# 打包前写入生产后端地址
-.\scripts\set-prod-api.ps1 -ApiBase https://maneko-api.onrender.com
+# 正式签名 AAB：要求 /ready 返回 ready，签名密钥从环境变量或忽略的属性文件读取
+$env:MANEKO_API_BASE = 'https://你的真实 API 域名'
+cd mobile-native
+npm run apk:release
 ```
 
 ### 产品入口
@@ -232,6 +234,8 @@ python -m pytest tests/ -v
 - [API 文档](docs/API.md)
 - [部署指南](docs/DEPLOYMENT.md)
 - [发布 / Vercel / APK](docs/RELEASE.md)
+- [隐私政策模板](docs/PRIVACY.md)
+- [商店条目与数据问卷草案](docs/STORE_LISTING.md)
 - [移动 App](maneko-app/README.md)
 - [架构设计](docs/superpowers/specs/2026-09-09-ai-novel-to-comic-design.md)
 

@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.services.novel_service import NovelService
 from app.services.library_service import novel_to_library_dict
+from app.config import settings
 
 router = APIRouter()
 
@@ -59,9 +60,12 @@ async def upload_novel(
         if not name.endswith((".txt", ".md", ".markdown")):
             raise HTTPException(status_code=400, detail="只支持 .txt / .md 文本文件")
 
-        content = await file.read()
-        if len(content) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="文件大小不能超过10MB")
+        content = await file.read(settings.MAX_UPLOAD_SIZE + 1)
+        if len(content) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件大小不能超过 {settings.MAX_UPLOAD_SIZE} 字节",
+            )
 
         try:
             text_content = content.decode('utf-8')
@@ -74,8 +78,11 @@ async def upload_novel(
         default_title = (file.filename or default_title).rsplit('.', 1)[0]
     elif text is not None:
         text_content = text
-        if len(text_content.encode("utf-8")) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="正文不能超过10MB")
+        if len(text_content.encode("utf-8")) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"正文不能超过 {settings.MAX_UPLOAD_SIZE} 字节",
+            )
     else:
         raise HTTPException(status_code=400, detail="请上传文件或粘贴正文")
 

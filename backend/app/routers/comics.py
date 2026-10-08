@@ -1,11 +1,18 @@
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List, Optional
+from zipfile import ZIP_DEFLATED, ZipFile
+import os
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.agents.comic_style import detect_genre_id, list_styles, resolve_style_id
 from app.database import get_db
+from app.config import settings
 from app.models.chapter import Chapter
 from app.models.novel import Novel
 from app.services.comic_service import ComicService
@@ -133,3 +140,43 @@ async def get_comic_images(chapter_id: str, db: Session = Depends(get_db)):
         )
         for p in panels
     ]
+
+
+@router.get("/{chapter_id}/export")
+async def export_comic(chapter_id: str, db: Session = Depends(get_db)):
+    """Download all generated panel PNGs for a chapter as a ZIP archive."""
+    chapter = NovelService(db).get_chapter(chapter_id)
+    if chapter is None:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    chapter_dir = (Path(settings.COMIC_DIR) / chapter_id).resolve()
+    if not chapter_dir.is_dir():
+        raise HTTPException(status_code=404, detail="该章节还没有可导出的漫画图片")
+    panels = sorted(
+        path for path in chapter_dir.glob("panel_*.png")
+        if path.is_file() and path.resolve().parent == chapter_dir
+    )
+    if not panels:
+        raise HTTPException(status_code=404, detail="该章节还没有可导出的漫画图片")
+
+    archive_path = None
+    try:
+        with NamedTemporaryFile(prefix="maneko-comic-", suffix=".zip", delete=False) as tmp:
+            archive_path = tmp.name
+        with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
+            for panel in panels:
+                archive.write(panel, arcname=panel.name)
+    except Exception:
+        if archive_path:
+            try:
+                os.unlink(archive_path)
+            except OSError:
+                pass
+        raise
+
+    return FileResponse(
+        archive_path,
+        media_type="application/zip",
+        filename=f"maneko-chapter-{chapter.chapter_number}.zip",
+        background=BackgroundTask(lambda: os.path.exists(archive_path) and os.unlink(archive_path)),
+    )

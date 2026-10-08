@@ -12,8 +12,10 @@
     prefs: 'maneko_prefs_v1',
   };
 
-  /** 部署时改为生产后端；空字符串 = 演示模式优先 */
-  const PROD_API = '';
+  /** Build scripts inject production service configuration in js/config.js. */
+  const RUNTIME_CONFIG = global.MANEKO_CONFIG || {};
+  const PROD_API = RUNTIME_CONFIG.apiBase || '';
+  const DEMO_ALLOWED = RUNTIME_CONFIG.allowDemo === true;
 
   const DEFAULT_PREFS = {
     fontScale: 1,
@@ -148,13 +150,20 @@
     _s: {
       ready: false,
       onboarded: false,
-      demo: true,
+      demo: false,
       apiBase: '',
       tab: 'home',
       route: { name: 'home', params: {} },
       novels: [],
       chaptersByNovel: {},
       comicByChapter: {},
+      sources: [],
+      categories: [],
+      sourceBooks: [],
+      sourceLoading: false,
+      sourceError: null,
+      selectedSource: 'all',
+      sourceQuery: '',
       styles: DEMO_STYLES.slice(),
       prefs: Object.assign({}, DEFAULT_PREFS),
       favorites: {},
@@ -171,9 +180,12 @@
 
     init() {
       const onboarded = localStorage.getItem(KEYS.onboard) === '1';
-      const apiBase = localStorage.getItem(KEYS.api) || PROD_API || '';
+      const savedApi = localStorage.getItem(KEYS.api) || '';
+      const apiBase = RUNTIME_CONFIG.lockApiBase
+        ? PROD_API
+        : (savedApi || PROD_API);
       const demoFlag = localStorage.getItem(KEYS.demo);
-      const demo = apiBase ? (demoFlag === '1') : true;
+      const demo = DEMO_ALLOWED && demoFlag === '1';
       this._s.onboarded = onboarded;
       this._s.apiBase = apiBase;
       this._s.demo = demo;
@@ -195,6 +207,10 @@
     },
 
     setDemo(on, apiBase) {
+      if (on && !DEMO_ALLOWED) return false;
+      if (RUNTIME_CONFIG.lockApiBase && typeof apiBase === 'string' && apiBase.replace(/\/$/, '') !== PROD_API) {
+        return false;
+      }
       if (typeof apiBase === 'string') {
         this._s.apiBase = apiBase.replace(/\/$/, '');
         if (this._s.apiBase) localStorage.setItem(KEYS.api, this._s.apiBase);
@@ -202,6 +218,7 @@
       }
       this._s.demo = !!on;
       localStorage.setItem(KEYS.demo, this._s.demo ? '1' : '0');
+      return true;
     },
 
     toggleFavorite(novelId) {
@@ -301,19 +318,28 @@
     },
 
     async request(path, options) {
-      if (store.state.demo || !this.base()) {
-        throw new Error('offline-demo');
-      }
+      if (store.state.demo) throw new Error('当前处于本地预览模式，请切换到服务端模式后使用此功能');
+      if (!this.base()) throw new Error('尚未配置 Maneko 服务地址，请先在「我的」中设置并测试连接');
       const opts = options || {};
       const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
       const res = await fetch(this.base() + path, Object.assign({}, opts, { headers }));
       if (!res.ok) {
-        let detail = res.statusText;
+        let detail = '';
         try {
           const j = await res.json();
-          detail = j.detail || detail;
-        } catch (_) {}
-        const err = new Error(typeof detail === 'string' ? detail : '请求失败');
+          const dependencyMessages = {
+            database: '数据库暂不可用',
+            chapter_model_configuration: '服务端尚未配置小说分章模型',
+            production_image_provider: '服务端仍使用模拟出图，无法生成真实漫画',
+            image_provider_credentials: '服务端未配置图像生成凭据',
+            image_provider_configuration: '服务端图像提供方配置不受支持',
+          };
+          detail = j.detail || j.message || dependencyMessages[j.dependency] || '';
+        } catch (_) {
+          try { detail = await res.text(); } catch (_) { /* keep status fallback */ }
+        }
+        if (res.status === 413) detail = detail || '内容超过服务端允许的大小，请缩短后重试';
+        const err = new Error(typeof detail === 'string' && detail ? detail : `服务请求失败（${res.status}）`);
         err.status = res.status;
         throw err;
       }
@@ -321,17 +347,58 @@
       return res.json();
     },
 
-    health() { return this.request('/health'); },
+    health() { return this.request('/ready'); },
 
     listNovels() { return this.request('/api/novels/'); },
     getNovel(id) { return this.request('/api/novels/' + id); },
     deleteNovel(id) {
-      return this.request('/api/novels/' + id, { method: 'DELETE' });
+      return this.request('/api/novels/' + encodeURIComponent(id), { method: 'DELETE' });
     },
-    chapters(novelId) { return this.request('/api/novels/' + novelId + '/chapters'); },
-    chapter(id) { return this.request('/api/chapters/' + id); },
+    chapters(novelId) { return this.request('/api/novels/' + encodeURIComponent(novelId) + '/chapters'); },
+    chapter(id) { return this.request('/api/chapters/' + encodeURIComponent(id)); },
 
     styles() { return this.request('/api/comics/styles'); },
+    sources() { return this.request('/api/library/sources'); },
+    searchSource(sourceId, query, limit = 12) {
+      const params = new URLSearchParams({ q: query || '', limit: String(limit) });
+      return this.request(`/api/library/sources/${encodeURIComponent(sourceId)}/search?${params}`);
+    },
+    searchAll(query, limit = 16) {
+      const params = new URLSearchParams({ q: query || '', limit: String(limit) });
+      return this.request(`/api/library/search?${params}`);
+    },
+    listBooks(params = {}) {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+      });
+      return this.request('/api/library/books' + (query.size ? `?${query}` : ''));
+    },
+    categories() { return this.request('/api/library/categories'); },
+    createCategory(name, color) {
+      return this.request('/api/library/categories', {
+        method: 'POST', body: JSON.stringify({ name, color }),
+      });
+    },
+    updateCategory(id, patch) {
+      return this.request(`/api/library/categories/${encodeURIComponent(id)}`, {
+        method: 'PATCH', body: JSON.stringify(patch),
+      });
+    },
+    deleteCategory(id) {
+      return this.request(`/api/library/categories/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    updateBook(id, patch) {
+      return this.request(`/api/library/books/${encodeURIComponent(id)}`, {
+        method: 'PATCH', body: JSON.stringify(patch),
+      });
+    },
+    importUrl(payload) {
+      return this.request('/api/library/import/url', { method: 'POST', body: JSON.stringify(payload) });
+    },
+    importSearch(payload) {
+      return this.request('/api/library/import/search', { method: 'POST', body: JSON.stringify(payload) });
+    },
     detectStyle(params) {
       const q = new URLSearchParams();
       if (params.novelId) q.set('novel_id', params.novelId);
@@ -346,20 +413,59 @@
     },
     comicStatus(chapterId) { return this.request('/api/comics/' + chapterId + '/status'); },
     comicImages(chapterId) { return this.request('/api/comics/' + chapterId + '/images'); },
+    async exportComic(chapterId) {
+      if (store.state.demo) throw new Error('本地预览内容没有真实漫画图片可导出');
+      if (!this.base()) throw new Error('尚未配置 Maneko 服务地址');
+      const response = await fetch(this.base() + '/api/comics/' + encodeURIComponent(chapterId) + '/export');
+      if (!response.ok) {
+        let detail = '';
+        try { const body = await response.json(); detail = body.detail || ''; } catch (_) { /* use status fallback */ }
+        const error = new Error(detail || `分镜导出失败（${response.status}）`);
+        error.status = response.status;
+        throw error;
+      }
+      return response.blob();
+    },
 
     async uploadText(title, text) {
-      if (store.state.demo || !this.base()) throw new Error('offline-demo');
+      if (store.state.demo) throw new Error('本地预览内容不能上传到书架，请切换到服务端模式');
+      if (!this.base()) throw new Error('尚未配置 Maneko 服务地址，请先在「我的」中设置并测试连接');
       const fd = new FormData();
-      fd.append('file', new Blob([text], { type: 'text/plain' }), (title || 'novel') + '.txt');
+      fd.append('file', new Blob([text], { type: 'text/plain' }), 'novel.txt');
+      if (title) fd.append('title', title);
       const res = await fetch(this.base() + '/api/novels/upload', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error(await res.text() || '上传失败');
+      if (!res.ok) {
+        let message = `上传失败（${res.status}）`;
+        try { message = (await res.json()).detail || message; } catch (_) { /* keep fallback */ }
+        throw new Error(message);
+      }
+      return res.json();
+    },
+
+    async uploadFile(file, title) {
+      if (store.state.demo) throw new Error('本地预览内容不能上传到书架，请切换到服务端模式');
+      if (!this.base()) throw new Error('尚未配置 Maneko 服务地址，请先在「我的」中设置并测试连接');
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      if (title) fd.append('title', title);
+      const res = await fetch(this.base() + '/api/novels/upload', { method: 'POST', body: fd });
+      if (!res.ok) {
+        let message = `上传失败（${res.status}）`;
+        try { message = (await res.json()).detail || message; } catch (_) { /* keep fallback */ }
+        throw new Error(message);
+      }
       return res.json();
     },
   };
 
-  function panelUrl(chapterId, index) {
+  function panelUrl(chapterId, index, imagePath) {
+    if (store.state.demo && DEMO_ALLOWED) return demoPanelUri(index);
+    if (!api.base()) return '';
+    if (typeof imagePath === 'string' && imagePath) {
+      if (/^https?:\/\//i.test(imagePath)) return imagePath;
+      return api.base() + (imagePath.startsWith('/') ? imagePath : `/${imagePath}`);
+    }
     const n = String(index).padStart(2, '0');
-    if (store.state.demo || !api.base()) return demoPanelUri(index);
     return api.base() + '/comics/' + chapterId + '/panel_' + n + '.png';
   }
 
@@ -426,7 +532,7 @@
   }
 
   global.Maneko = {
-    KEYS, PROD_API, DEMO_STYLES,
+    KEYS, PROD_API, DEMO_STYLES, DEMO_ALLOWED,
     store, api, panelUrl, statusLabel, styleLabel, splitLocalChapters, uid,
   };
 })(window);

@@ -3,78 +3,56 @@
 @tailwind utilities;
 
 :root {
-  --neko-pink: #ff1493;
-  --neko-cyan: #00f0ff;
-  --neko-orange: #ff6b00;
-  --neko-bg: #0a0a1a;
-  --neko-bg-deep: #12041e;
+  color-scheme: light;
+  --color-page: #f4f2ed;
+  --color-surface: #fffdfa;
+  --color-surface-alt: #ece9e1;
+  --color-text: #252923;
+  --color-muted: #596259;
+  --color-border: #858d84;
+  --color-primary: #80535d;
+  --color-accent: #32675f;
+  --color-success: #33694f;
+  --color-warning: #875b2e;
+  --color-danger: #a33e42;
+  --color-focus: #1f6070;
+  --color-on-primary: #fffdfa;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  min-width: 320px;
+  background: var(--color-page);
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #0a0a1a;
-  color: #fff;
+  background: var(--color-page);
+  color: var(--color-text);
 }
 
-/* subtle neon city ambience behind all pages */
-#root {
-  min-height: 100vh;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(255, 20, 147, 0.08), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 85% 10%, rgba(0, 240, 255, 0.07), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(188, 19, 254, 0.06), transparent 55%);
+button, input, textarea, select { font: inherit; }
+button { min-height: 44px; }
+input, select { min-height: 44px; }
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
-@keyframes panelPulse {
-  0%,
-  100% {
-    opacity: 0.18;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.38;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes sparkFloat {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateY(-10px) scale(1.25);
-    opacity: 1;
-  }
-}
-
-@keyframes neonFlicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  92% {
-    opacity: 1;
-  }
-  94% {
-    opacity: 0.55;
-  }
-  96% {
-    opacity: 1;
-  }
-  98% {
-    opacity: 0.7;
-  }
-}
+#root { min-height: 100vh; }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

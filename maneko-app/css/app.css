@@ -1,22 +1,37 @@
-/* Maneko Production Mobile — Neon Tokyo Design System */
+/* Maneko mobile semantic theme — paper, ink and restrained accents */
 :root {
-  --night: #0a0a1a;
-  --night-2: #12041e;
-  --surface: rgba(18, 8, 32, 0.92);
-  --surface-2: #1a0c2e;
-  --pink: #ff1493;
-  --cyan: #00f0ff;
-  --orange: #ff6b00;
-  --purple: #bc13fe;
-  --ink: #ffffff;
-  --muted: #9ca3af;
-  --ok: #3dff9a;
-  --err: #ff4d6d;
-  --glow-pink: 0 0 10px rgba(255, 20, 147, 0.55), 0 0 22px rgba(255, 20, 147, 0.28);
-  --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.22);
-  --glow-card: 0 0 16px rgba(255, 20, 147, 0.28);
-  --glow-card-hover: 0 0 28px rgba(255, 20, 147, 0.45), 0 0 16px rgba(0, 240, 255, 0.18);
-  --radius: 2px;
+  color-scheme: light;
+  --color-page: #f4f2ed;
+  --color-surface: #fffdfa;
+  --color-surface-alt: #ece9e1;
+  --color-text: #252923;
+  --color-muted: #596259;
+  --color-border: #858d84;
+  --color-primary: #80535d;
+  --color-accent: #32675f;
+  --color-success: #33694f;
+  --color-warning: #875b2e;
+  --color-danger: #a33e42;
+  --color-focus: #1f6070;
+  --color-on-primary: #fffdfa;
+  /* Legacy selector aliases; components should use the semantic tokens above. */
+  --night: var(--color-page);
+  --night-2: var(--color-surface-alt);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-alt);
+  --pink: var(--color-primary);
+  --cyan: var(--color-accent);
+  --orange: var(--color-warning);
+  --purple: var(--color-primary);
+  --ink: var(--color-text);
+  --muted: var(--color-muted);
+  --ok: var(--color-success);
+  --err: var(--color-danger);
+  --glow-pink: none;
+  --glow-cyan: none;
+  --glow-card: 0 2px 8px rgba(37, 41, 35, 0.08);
+  --glow-card-hover: 0 4px 14px rgba(37, 41, 35, 0.12);
+  --radius: 10px;
   --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -551,4 +566,94 @@ img { display: block; max-width: 100%; }
 
 @media (min-width: 480px) {
   #view { padding-left: 18px; padding-right: 18px; }
+}
+
+/* Calm, readable production surfaces. Keep generated comic art untouched. */
+body {
+  color: var(--color-text);
+  background: var(--color-page);
+  background-attachment: initial;
+}
+body::before { display: none; }
+* { text-shadow: none !important; }
+::selection { background: rgba(128, 83, 93, 0.2); }
+.statusbar { color: var(--color-muted); }
+.appbar, .bottom-nav {
+  background: rgba(255, 253, 250, 0.97);
+  border-color: rgba(168, 176, 168, 0.8);
+  box-shadow: 0 2px 8px rgba(37, 41, 35, 0.07);
+}
+.neko-ava, .onboard .logo-wrap img {
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px rgba(37, 41, 35, 0.1);
+  background: var(--color-surface-alt);
+}
+.brand .name { color: var(--color-primary); }
+.brand .kana { color: var(--color-muted); }
+.icon-btn { min-width: 44px; min-height: 44px; color: var(--color-accent); border-color: var(--color-border); }
+.icon-btn:active, .icon-btn.on { box-shadow: none; border-color: var(--color-accent); }
+.bottom-nav { border-top-width: 1px; }
+.nav-item { min-height: 44px; color: var(--color-muted); letter-spacing: 0; }
+.nav-item.active { color: var(--color-primary); background: rgba(128, 83, 93, 0.08); }
+.nav-item.active .ico { filter: none; }
+.card, .hero, .banner, .stat, .reader-panel, .chapter-item, .style-card, .panel,
+.field input, .field textarea, .field select, .search-bar input, .sheet,
+.onboard .step, .sticky-actions, .list-row .ico {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px rgba(37, 41, 35, 0.06);
+}
+.hero, .banner { background-image: none; }
+.hero::after { display: none; }
+.banner { border-width: 1px; }
+.cover {
+  background: linear-gradient(145deg, #e7ddd8, #d7e2dc);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+.card.cyan, .card.orange, .chapter-item.active, .style-card.active,
+.chapter-item, .style-card { border-color: var(--color-border); }
+.card:active, .style-card.active, .chapter-item.active { box-shadow: var(--glow-card-hover); }
+.badge, .filter-chip, .tab { border-color: var(--color-border); }
+.filter-chip.active, .tab.active { color: var(--color-primary); background: rgba(128, 83, 93, 0.1); border-color: var(--color-primary); }
+.progress { background: var(--color-surface-alt); }
+.progress i { background: var(--color-accent); }
+.btn { min-height: 44px; border-radius: var(--radius); }
+.btn-primary { color: var(--color-primary); border-color: var(--color-primary); box-shadow: none; }
+.btn-primary:active { background: var(--color-primary); color: var(--color-on-primary); }
+.btn-ghost { color: var(--color-accent); border-color: var(--color-accent); }
+.btn-ghost:active { box-shadow: none; color: var(--color-on-primary); background: var(--color-accent); }
+.btn-orange { color: var(--color-warning); border-color: var(--color-warning); box-shadow: none; }
+.btn-danger { color: var(--color-danger); border-color: var(--color-danger); }
+.chapter-item .st.done { color: var(--color-success); }
+.chapter-item .st.gen { color: var(--color-warning); }
+.seg button.active { color: var(--color-on-primary); background: var(--color-accent); }
+.field input:focus, .field textarea:focus, .field select:focus,
+.search-bar input:focus { outline: 3px solid var(--color-focus); outline-offset: 2px; border-color: var(--color-focus); box-shadow: none; }
+.toast, .sheet { color: var(--color-text); background: var(--color-surface); border-color: var(--color-border); box-shadow: 0 8px 24px rgba(37, 41, 35, 0.14); }
+.toast.ok { border-color: var(--color-success); }
+.toast.err { border-color: var(--color-danger); }
+.divider, .list-row { border-color: var(--color-border); }
+.notice {
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.notice.error { color: var(--color-danger); border-color: var(--color-danger); background: rgba(163, 62, 66, 0.08); }
+.text-link { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

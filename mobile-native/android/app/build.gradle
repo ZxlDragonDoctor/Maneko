@@ -1,5 +1,23 @@
 apply plugin: 'com.android.application'
 
+def signingProperties = new Properties()
+def signingPropertiesFile = file('keystore.properties')
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def signingValue = { String propertyName, String environmentName ->
+    (System.getenv(environmentName) ?: signingProperties.getProperty(propertyName, '')).trim()
+}
+def releaseStorePath = signingValue('storeFile', 'MANEKO_KEYSTORE_PATH')
+def releaseStorePassword = signingValue('storePassword', 'MANEKO_KEYSTORE_PASSWORD')
+def releaseKeyAlias = signingValue('keyAlias', 'MANEKO_KEY_ALIAS')
+def releaseKeyPassword = signingValue('keyPassword', 'MANEKO_KEY_PASSWORD')
+def releaseSigningValues = [releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword]
+def releaseTaskRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+if (releaseTaskRequested && releaseSigningValues.any { !it }) {
+    throw new GradleException('Release signing is not configured. Set MANEKO_KEYSTORE_PATH, MANEKO_KEYSTORE_PASSWORD, MANEKO_KEY_ALIAS and MANEKO_KEY_PASSWORD, or create app/keystore.properties from keystore.properties.example.')
+}
+
 android {
     namespace "com.maneko.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -8,7 +26,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +34,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseSigningValues.every { it }) {
+                storeFile project.file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseSigningValues.every { it }) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

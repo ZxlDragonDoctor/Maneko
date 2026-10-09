@@ -93,10 +93,23 @@ try {
   Write-Host "Signed self-hosted APK: $releaseApk" -ForegroundColor Green
   Write-Host "SHA-256: $sha256"
 } finally {
-  if (Test-Path -LiteralPath $wwwDir) {
-    Remove-Item -LiteralPath $wwwDir -Recurse -Force
-  }
   if ($wwwBackup -and (Test-Path -LiteralPath $wwwBackup)) {
-    Move-Item -LiteralPath $wwwBackup -Destination $wwwDir
+    $generatedWww = Join-Path $mobile ('.www-generated-after-release-' + [guid]::NewGuid().ToString('N'))
+    try {
+      if (Test-Path -LiteralPath $wwwDir) {
+        Move-Item -LiteralPath $wwwDir -Destination $generatedWww
+      }
+      Move-Item -LiteralPath $wwwBackup -Destination $wwwDir
+    } catch {
+      if ((Test-Path -LiteralPath $generatedWww) -and -not (Test-Path -LiteralPath $wwwDir)) {
+        try { Move-Item -LiteralPath $generatedWww -Destination $wwwDir }
+        catch { Write-Warning "Generated assets remain recoverable at '$generatedWww'." }
+      }
+      throw "Could not restore the original web assets; their backup remains at '$wwwBackup'. $($_.Exception.Message)"
+    }
+    if (Test-Path -LiteralPath $generatedWww) {
+      try { Remove-Item -LiteralPath $generatedWww -Recurse -Force }
+      catch { Write-Warning "Original web assets were restored; generated assets remain at '$generatedWww'." }
+    }
   }
 }

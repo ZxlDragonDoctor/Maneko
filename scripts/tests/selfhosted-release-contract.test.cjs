@@ -37,3 +37,15 @@ test('self-hosted release command builds an installable APK without a hosted API
   assert.match(script, /app-release\.apk/)
   assert.doesNotMatch(script, /MANEKO_API_BASE|\/ready/)
 })
+
+test('release cleanup keeps generated web assets unless backed-up assets can be restored', () => {
+  const script = read('scripts/build-android-selfhosted-release.ps1')
+  const cleanup = script.slice(script.lastIndexOf('} finally {'))
+
+  assert.match(
+    cleanup,
+    /if\s*\(\$wwwBackup\s*-and\s*\(Test-Path -LiteralPath \$wwwBackup\)\)\s*\{[\s\S]*?Move-Item -LiteralPath \$wwwDir -Destination \$generatedWww[\s\S]*?Move-Item -LiteralPath \$wwwBackup -Destination \$wwwDir/s,
+  )
+  assert.match(cleanup, /their backup remains at/)
+  assert.doesNotMatch(cleanup, /Remove-Item -LiteralPath \$wwwDir -Recurse -Force/)
+})

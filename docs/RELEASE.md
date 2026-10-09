@@ -72,7 +72,7 @@ npm run apk:release
 
 Google Play 从 2026-08-31 起要求新应用与更新 target Android 16 / API 36；提交前再次核对[官方目标 API 政策](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en)及[Android 构建工具兼容表](https://developer.android.com/build/releases/about-agp)。
 
-## 5. 发布阻断项
+## 6. 发布阻断项
 
 - 发布者的 Google Play / Apple Developer 账号与开发者身份验证。
 - 可公开访问并与真实运营者/联系方式一致的隐私政策 URL；模板位置见 `docs/PRIVACY.md`。

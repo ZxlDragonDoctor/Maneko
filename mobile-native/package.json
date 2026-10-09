@@ -1,6 +1,6 @@
 {
   "name": "maneko-mobile",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "description": "Maneko · 漫猫 — Android APK (Capacitor)",
   "scripts": {
@@ -9,6 +9,7 @@
     "android": "cap run android",
     "apk:debug": "powershell -ExecutionPolicy Bypass -File ../scripts/build-apk.ps1",
     "apk:release": "powershell -ExecutionPolicy Bypass -File ../scripts/build-android-release.ps1",
+    "apk:release:self-hosted": "powershell -ExecutionPolicy Bypass -File ../scripts/build-android-selfhosted-release.ps1",
     "build:www": "powershell -ExecutionPolicy Bypass -File ../scripts/build-apk-www.ps1"
   },
   "dependencies": {

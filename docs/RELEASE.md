@@ -41,7 +41,22 @@ npm run apk:debug
 
 调试版本默认不会捆绑 API 地址，可在应用“我的”页填写开发服务（仓库本地脚本启动在 8001）。请勿用 mock 后端结果验收正式功能。
 
-## 4. 签名 Android App Bundle
+## 4. 构建 GitHub 自托管安装包
+
+GitHub 安装包是完整功能的签名 release APK，不内置共享 API 或模型密钥，也不启用演示数据。用户首次打开后，在 App 的 API 设置中填入自己部署的 HTTPS 后端地址；后端必须配置真实分章模型、图像提供方和持久存储。此方案适合个人或受控自托管，不能把无用户隔离的 API 直接公开给多用户。
+
+需要 Android SDK 36 / Build Tools 36.0.0、Node.js、JDK 17，以及已有的长期签名 keystore。不要用 Android 默认 debug 密钥作为长期正式签名密钥。签名配置参考 `mobile-native/android/app/keystore.properties.example`，或通过 `MANEKO_KEYSTORE_PATH`、`MANEKO_KEYSTORE_PASSWORD`、`MANEKO_KEY_ALIAS`、`MANEKO_KEY_PASSWORD` 环境变量传入。
+
+```powershell
+cd mobile-native
+npm run apk:release:self-hosted
+```
+
+脚本不访问云端 `/ready`，生成前会检查 API 留空、演示关闭且设置可编辑；完成后验证签名、应用 id、版本和 target SDK。APK 输出到 `mobile-native/android/app/build/outputs/apk/release/app-release.apk`，并打印 SHA-256。构建过程会暂存并恢复已有的 `mobile-native/www/`，避免覆盖本地生成内容。
+
+发布 GitHub Release 前，将 Android `versionCode` 递增、更新 `versionName`，并确认签名证书兼容此前安装包；换用新私钥时，旧版 debug 安装必须先卸载，可能清除本机应用数据。不要提交 keystore 或密码。
+
+## 5. 签名 Android App Bundle
 
 首次发布生成自己的签名密钥并安全备份，不要提交 keystore 或密码。复制 `mobile-native/android/app/keystore.properties.example` 为同目录 `keystore.properties`，填写 `storeFile`、`storePassword`、`keyAlias`、`keyPassword`；该文件和 `.jks` 已被 gitignore。也可通过 `MANEKO_KEYSTORE_PATH`、`MANEKO_KEYSTORE_PASSWORD`、`MANEKO_KEY_ALIAS`、`MANEKO_KEY_PASSWORD` 环境变量提供。
 
